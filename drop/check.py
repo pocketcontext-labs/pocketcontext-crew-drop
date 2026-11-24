@@ -170,6 +170,11 @@ def check(binary, scratch):
         require(code == 404, "control status is reachable on the public listener")
         guest.crew_routes()
         baseline = durable_rows(source)
+        # Record the real content digest while the process still owns its
+        # expanded assets, whether they live on the volume or in TMPDIR.
+        cache_ids = {path.parents[1].name for path in scratch.rglob("pb_hooks/crew.pb.js")
+                     if (path.parents[1] / ".complete").is_file()}
+        require(len(cache_ids) == 1, "expected one active content-addressed hook cache")
         guest.until(lambda: guest.status()["replication_state"] == "ready", "filesystem replica")
         guest.control("/control/sync")
     print("PASS first boot, public/private routing, Crew authorization and durable sync", flush=True)
@@ -178,12 +183,12 @@ def check(binary, scratch):
     # some cached JavaScript files had lost their bytes. Recreate that exact
     # condition in this temporary volume, preserving its database and marker.
     persistent_cache = source / "crew/app"
-    staged_hooks = list(persistent_cache.glob("*/pb_hooks/crew.pb.js"))
-    if not staged_hooks:
-        # Recent binaries stage fresh resources outside the volume. Populate a
-        # stale historical cache in the old location to cover upgrades as well.
-        staged_hooks = [persistent_cache / "12c0f14a97eb1751/pb_hooks/crew.pb.js"]
-    for hook in staged_hooks:
+    if persistent_cache.is_symlink():
+        # Replace only the disposable test's generated runtime pointer. A real
+        # upgrade may instead find the older physical cache directory here.
+        persistent_cache.unlink()
+    for cache_id in cache_ids:
+        hook = persistent_cache / cache_id / "pb_hooks/crew.pb.js"
         hook.parent.mkdir(parents=True, exist_ok=True)
         (hook.parents[1] / ".complete").touch()
         hook.write_bytes(b"")
