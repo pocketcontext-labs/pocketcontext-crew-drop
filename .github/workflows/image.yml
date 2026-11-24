@@ -53,7 +53,7 @@ jobs:
       - name: Populated HTTPS S3 backup and disaster restore
         run: uv run docker/recovery.py --image pocketcontext:ci
   publish:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.repository == 'pocketcontext-labs/pocketcontext-crew' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: [tests, check]
     strategy:
       fail-fast: false
@@ -148,7 +148,7 @@ jobs:
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.CONTEXT_DEPLOY_PAUSED != 'true' && vars.COLORS_PROFILE != ''
+    if: github.repository == 'pocketcontext-labs/pocketcontext-crew' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.CONTEXT_DEPLOY_PAUSED != 'true' && vars.COLORS_PROFILE != ''
     needs: manifest
     runs-on: ubuntu-24.04
     timeout-minutes: 90

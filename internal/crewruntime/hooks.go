@@ -33,6 +33,9 @@ func Hooks() appserver.Hooks {
 			return nil
 		},
 		PreRegister: func(app core.App, p *Project, opts appserver.ServeOptions) error {
+			if err := configureDropFiles(app); err != nil {
+				return err
+			}
 			configureWebhookRuntime(app, p, opts.HTTPSDomain)
 			endpoint := ""
 			switch os.Getenv("POCKETCONTEXT_CREW_DEV_WEBHOOK_SIMULATOR") {
@@ -92,9 +95,13 @@ func hookBindings() map[string]any {
 		"webhookCredentialReady":  webhookCredentialReady,
 		"webhookUUID":             webhookUUID,
 		"crewRecordLink":          crewRecordLink,
-		"crewAttachmentFiles":     crewAttachmentFiles,
-		"crewMarkdownRefs":        crewMarkdownRefs,
-		"crewUploadLinkFiles":     crewUploadLinkFiles,
+		"crewAttachmentFiles": func(e *core.RequestEvent, list []any) (map[string]any, error) {
+			return prepareDropUpload(e, crewAttachmentFiles(e, list))
+		},
+		"crewMarkdownRefs": crewMarkdownRefs,
+		"crewUploadLinkFiles": func(e *core.RequestEvent) (map[string]any, error) {
+			return prepareDropUpload(e, crewUploadLinkFiles(e))
+		},
 	}
 }
 

@@ -230,7 +230,7 @@ func artifactFile(re *core.RequestEvent) error {
 	if err != nil || !att.GetBool("image") {
 		return artifactPlain(re, http.StatusNotFound, artifactNotFoundBody)
 	}
-	fsys, err := re.App.NewFilesystem()
+	fsys, err := attachmentFilesystem(re, att)
 	if err != nil {
 		return artifactPlain(re, http.StatusServiceUnavailable, "Storage unavailable\n")
 	}

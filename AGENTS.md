@@ -1,5 +1,7 @@
 # PocketContext Crew
 
+Private Drop derivative of upstream Crew v0.45.4. Read [the guest guide](drop/README.md) before changing the Drop build, startup, recovery or attachment storage. Push to this derivative's main. Public Crew is its upstream source.
+
 Single-owner notes, tasks and human review, derived from PocketContext.
 Read README.md, docs/crew.md and docs/hosting.md before relevant changes.
 

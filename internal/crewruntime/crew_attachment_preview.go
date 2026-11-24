@@ -113,9 +113,9 @@ func attachmentPreviewFile(re *core.RequestEvent, token string) error {
 	if !previewable(mediaType) {
 		return re.BadRequestError("Only HTML and SVG attachments have a preview (not_previewable).", nil)
 	}
-	fsys, err := re.App.NewFilesystem()
+	fsys, err := attachmentFilesystem(re, rec)
 	if err != nil {
-		return re.InternalServerError("Storage unavailable", nil)
+		return err
 	}
 	defer fsys.Close()
 	contentType := "text/html; charset=utf-8"

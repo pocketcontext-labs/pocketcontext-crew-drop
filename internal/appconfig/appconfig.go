@@ -26,14 +26,19 @@ var Runtime = mustRuntime()
 var Profiles *profiles.Store = Runtime.Profiles()
 
 func mustRuntime() *appserver.Runtime {
-	rt, err := appserver.New(appserver.Config{
-		Identity: crewpolicy.Identity, Version: buildinfo.Version, Commit: buildinfo.Commit, Assets: assets.Assets,
-		Policy: crewpolicy.Policy(), Hooks: crewruntime.Hooks(), Text: crewpolicy.Text,
-	})
+	rt, err := NewRuntime(crewruntime.Hooks())
 	if err != nil {
 		panic(err)
 	}
 	return rt
+}
+
+// NewRuntime constructs the Crew server with the supplied product hooks.
+func NewRuntime(hooks appserver.Hooks) (*appserver.Runtime, error) {
+	return appserver.New(appserver.Config{
+		Identity: crewpolicy.Identity, Version: buildinfo.Version, Commit: buildinfo.Commit, Assets: assets.Assets,
+		Policy: crewpolicy.Policy(), Hooks: hooks, Text: crewpolicy.Text,
+	})
 }
 
 // KnownApp reports whether an app id belongs to this application or an earlier

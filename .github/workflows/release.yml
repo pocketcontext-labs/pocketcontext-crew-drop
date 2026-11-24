@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   metadata:
+    if: github.repository == 'pocketcontext-labs/pocketcontext-crew'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.release.outputs.version }}

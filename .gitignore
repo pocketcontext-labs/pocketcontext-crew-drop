@@ -13,3 +13,6 @@ bin/
 dist/
 .devenv/
 .direnv/
+
+/drop/build/
+/internal/dropsupervisor/assets/litestream-linux-amd64.gz

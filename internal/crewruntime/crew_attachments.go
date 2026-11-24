@@ -712,9 +712,9 @@ func attachmentFile(re *core.RequestEvent) error {
 	if size != "" && !isImage {
 		return re.BadRequestError("Thumbnails exist only for images", nil)
 	}
-	fsys, err := re.App.NewFilesystem()
+	fsys, err := attachmentFilesystem(re, rec)
 	if err != nil {
-		return re.InternalServerError("Storage unavailable", nil)
+		return err
 	}
 	defer fsys.Close()
 	key, contentType := rec.BaseFilesPath()+"/"+rec.GetString("file"), rec.GetString("media_type")
@@ -774,22 +774,9 @@ func attachmentRead(re *core.RequestEvent) error {
 	if body.Offset < 0 || body.MaxBytes < 0 {
 		return re.BadRequestError("offset and max_bytes must not be negative", nil)
 	}
-	fsys, err := re.App.NewFilesystem()
-	if err != nil {
-		return re.InternalServerError("Storage unavailable", nil)
-	}
-	defer fsys.Close()
 	original := rec.BaseFilesPath() + "/" + rec.GetString("file")
 	meta := rec.PublicExport()
 	out := map[string]any{"attachment": meta, "variant": body.Variant}
-	readAll := func(key string, limit int64) ([]byte, error) {
-		r, err := fsys.GetReader(key)
-		if err != nil {
-			return nil, err
-		}
-		defer r.Close()
-		return io.ReadAll(io.LimitReader(r, limit))
-	}
 	switch body.Variant {
 	case "preview", "card":
 		if !rec.GetBool("image") {
@@ -800,6 +787,19 @@ func attachmentRead(re *core.RequestEvent) error {
 		}
 		if tooManyPixels(rec) {
 			return previewUnavailable(re, "Image is larger than 40 megapixels and has no preview; use its metadata, or read original bytes")
+		}
+		fsys, err := attachmentFilesystem(re, rec)
+		if err != nil {
+			return err
+		}
+		defer fsys.Close()
+		readAll := func(key string, limit int64) ([]byte, error) {
+			r, err := fsys.GetReader(key)
+			if err != nil {
+				return nil, err
+			}
+			defer r.Close()
+			return io.ReadAll(io.LimitReader(r, limit))
 		}
 		key, contentType := thumbs.thumbnail(re.Request.Context(), re.App, fsys, rec, attachmentThumbs[body.Variant])
 		data, err := readAll(key, attachmentReadMaxBytes+1)
@@ -843,6 +843,11 @@ func attachmentRead(re *core.RequestEvent) error {
 	if body.Offset > total {
 		return re.BadRequestError("offset is beyond the end of the file", nil)
 	}
+	fsys, err := attachmentFilesystem(re, rec)
+	if err != nil {
+		return err
+	}
+	defer fsys.Close()
 	r, err := fsys.GetReader(original)
 	if err != nil {
 		return re.NotFoundError("Attachment file missing.", nil)

@@ -1,0 +1,50 @@
+# Run Crew on Drop
+
+This private derivative starts at upstream Crew v0.45.4 (14fbf093ef493bb2ff92eaa256b73c28dad73864). The Drop executable contains the real Crew reader, PocketBase server, hosted email sign-in, MCP adapter and Litestream 0.5.18. It runs in one Linux/amd64 NibRunner guest per placement.
+
+## Build and stage
+
+On Linux/amd64 install Go from go.mod, a musl C compiler, binutils, Node and pnpm from the reader toolchain, plus curl, tar and gzip. From the repository root run:
+
+```sh
+drop/build.sh
+CGO_ENABLED=1 go test -tags "$(cat build-tags.txt),crew_drop" ./internal/client ./internal/dropfiles ./internal/dropsupervisor ./internal/crewruntime
+```
+
+Upload `drop/build/pocketcontext-crew-drop-linux-amd64` as a Drop release and verify its SHA-256 against the build output. The build checks the archive and executable digests of the embedded Litestream child, verifies static linking and enforces the 90 MiB release limit. Set the guest executable to the staged binary, arguments to `["drop-serve"]`, app port to **8080**, and HTTP readiness path to `/ready`. No arguments also starts the guest supervisor. Normal Crew CLI subcommands are available.
+
+The hosted origin is the exact public Drop hostname, with TLS terminated upstream. NibRunner must preserve the Host header. Only port 8080 is the public application port. The node calls the separate HTTP hook API on guest port 8081 with its per-app bearer. The supervisor forwards business traffic to Crew’s hosted route allowlist on 127.0.0.1:18080. Forwarded client-address headers are replaced with the actual peer address. A shared ingress peer can therefore share one Crew IP rate-limit budget.
+
+## Configuration
+
+| Setting | Purpose |
+| --- | --- |
+| `NIBRUN_DATA_DIR` | Persistent per-app mount, normally `/app/data`. |
+| `CREW_DROP_APP_ID` | The literal NibRunner ID supplied by Drop, for example `d-000000000000001`. |
+| `CREW_DROP_BUCKET`, `AWS_REGION` | Shared replica bucket and its region. |
+| `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | App-scoped role and rotating guest token mount from the host identity broker. |
+| `CREW_DROP_HOOK_TOKEN` | A high-entropy secret shared only with the node lifecycle caller. |
+| `POCKETCONTEXT_DOMAIN`, `POCKETCONTEXT_OWNER_EMAIL` | Public Crew hostname and its one owner. |
+| `POCKETCONTEXT_SMTP_HOST`, `_PORT`, `_TLS`, `_USERNAME`, `_PASSWORD`, `_FROM` | Use the full `POCKETCONTEXT_SMTP_` prefix for each setting. These configure Crew's authenticated hosted sign-in email. |
+| `CREW_DROP_BOOTSTRAP=1` | Allow an explicitly new app to claim an empty Crew replica namespace. Remove after initial enrollment. |
+| `CREW_DROP_WAIT`, `CREW_DROP_HOOK_TIMEOUT` | Data admission wait and hook deadline, Go durations defaulting to 10s and 12s. |
+
+Trust the exact issuer, audience and app subject in AWS. Grant ListBucket only under `<AppId>/` and grant the object operations required by Litestream and attachment storage only for that prefix. Use the M1 identity provisioner for dev. The app stores its enrollment at `<AppId>/crew-drop/enrollment`, SQLite under `<AppId>/crew-drop/sqlite/`, and immutable file originals under `<AppId>/files/<sha256>`. A mounted token may arrive after local serving starts. Both consumers exchange it for scoped temporary credentials when they need AWS.
+
+## Startup, shutdown and recovery
+
+| Evidence on the destination | How the first data request is served |
+| --- | --- |
+| Existing private `crew/private/live/data.db`, including its local WAL | Bind both listeners, open the real Crew database and forward requests when hosted Crew accepts them. Hook delivery, token availability, STS, replica catch-up and attachment enumeration are off this path. |
+| New app and explicit enrollment | Reserve the new app namespace, initialize the hosted owner and schema, and persist its app identity. The pending enrollment nonce belongs to this volume so a fresh replacement cannot claim an existing app. |
+| Missing live database for an established app | Admit up to 64 waiting requests behind one recovery worker. Restore to a temporary file, validate full SQLite integrity and the app binding, then publish the canonical project snapshot and start Crew in hosted-restore mode. Timeout, overload and unavailable replicas return HTTP 503 with Retry-After. The worker retries. |
+
+Core owns the private working copy and its atomic project snapshot at `crew/project/crew.db`. Litestream reads the live database and WAL. A local restart checks the app ID and recovers interrupted write-back through Core. A fresh host receives the verified SQLite snapshot before Core opens a new private working copy. `/ready` reports that the supervisor is listening. Time a real authenticated Crew operation to measure service.
+
+Authenticated `GET /status` on the hook port reports data and replication states, recovery counts, waiters and UTC phase timestamps. `POST /hooks/start` and `/hooks/resume` do not require replication. `POST /hooks/suspend` drains application ingress and flushes Litestream before reopening the ingress for wake. `POST /hooks/terminate` drains before the final sync and keeps the backend quiesced until resume or exit. The node is responsible for the actual source fence before granting a destination write authority. `POST /control/sync` requests an explicit synchronized checkpoint. The acceptance harness can deliberately hold or release the hooks, AWS or recovery worker through the authenticated control API.
+
+A verified file PUT precedes acknowledgment of its SQLite metadata. Protected downloads, archived records restored by the owner, signed previews and published snapshot images retain Crew's route-level authorization. The first authorized read on an empty volume verifies size and SHA-256 while restoring the original; subsequent reads can use the local file. Credential acquisition for an upload happens before the writer transaction. Its S3 PUT can still occupy the writer during the upload. A successful PUT whose transaction later rolls back can leave an unreferenced immutable object. WAL replication remains asynchronous; an acknowledged note or attachment reference newer than the replicated cut can be lost on abrupt host failure.
+
+An established cold restore revokes previous sessions and OTPs and suspends old webhook delivery. Sign in again as the same owner. The app has two recovery stores for its SQLite data and original attachment bytes. Crew's complete-backup process also covers operator material such as the private webhook encryption key, OAuth files and historical archives. Preserve the full backup and its secrets for an existing installation. Importing an existing non-Drop Crew dataset additionally requires securely backfilling every referenced file, including archived originals, and validating the owner and app binding before cutover. The development pilot starts with a newly enrolled app.
+
+The default branch is main. The public Crew repository is the upstream source. This derivative's Drop CI builds and tests the guest. Upstream hosted image publication, deployment and release jobs are scoped to the public Crew repository. The [M1 source and host proofs](https://github.com/pocketcontext-labs/drop-m1-proof) document the underlying runner and identity path.

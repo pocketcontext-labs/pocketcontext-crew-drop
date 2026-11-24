@@ -8,5 +8,8 @@ import (
 )
 
 func main() {
+	if handled, code := runDrop(os.Args[1:]); handled {
+		os.Exit(code)
+	}
 	os.Exit(client.Run(os.Args[1:]))
 }
