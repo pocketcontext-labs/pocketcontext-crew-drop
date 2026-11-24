@@ -24,3 +24,14 @@ jobs:
           drop/build.sh
           python3 drop/check.py
           CGO_ENABLED=1 go test -tags "$(cat build-tags.txt),crew_drop" ./internal/dropsupervisor ./internal/dropfiles ./internal/client ./internal/crewruntime
+      - name: Checksum the tested guest
+        working-directory: drop/build
+        run: sha256sum pocketcontext-crew-drop-linux-amd64 > checksums.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: crew-drop-linux-amd64
+          path: |
+            drop/build/pocketcontext-crew-drop-linux-amd64
+            drop/build/checksums.txt
+          if-no-files-found: error
+          retention-days: 7
