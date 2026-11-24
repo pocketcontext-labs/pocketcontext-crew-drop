@@ -2,6 +2,8 @@
 
 ## Managed sign-in on a development KVM host
 
+The [24 November sign-in results](evidence/2026-11-24-managed-sign-in.md) record the observed behavior and component revisions.
+
 The sign-in acceptance test starts a fresh hosted Drop server and node agent, NibRunner, two Firecracker guests and an authenticated TLS mailbox inside temporary network, PID and mount namespaces. It verifies the two owners through Drop email sign-in, creates their apps, stops Drop, restarts NibRunner, signs into both guests with Chromium, then reconnects Drop and compares direct and managed delivery when the SMTP server accepts a message and loses its final reply. It also disables one binding and signs into the other app after a request wakes its sleeping VM with Drop offline. All credentials and mailbox contents stay in the temporary directory. The host supplies its installed guest image and versions manifest read-only. Build the current Drop, NibRunner and Crew binaries and install the Crew reader’s Playwright Chromium before running:
 
 ```sh

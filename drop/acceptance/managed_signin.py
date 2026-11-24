@@ -457,12 +457,17 @@ def run(root, stack, args):
         "PASS: request-triggered wake, bound email delivery and one-time redemption",
         flush=True,
     )
-    for app in apps:
-        op(admin, "app.stop", app=app["slug"])
+    for token, app in zip((admin, member), apps, strict=True):
+        op(token, "app.stop", app=app["slug"])
     wait_for(
         "both VMs stopped",
-        lambda: all(
-            i["state"] == "stopped" for i in read_json(node.reported)["instances"]
+        lambda: (
+            {
+                i["appId"]
+                for i in read_json(node.reported)["instances"]
+                if i["state"] == "stopped"
+            }
+            == {a["nib_app_id"] for a in apps}
         ),
         timeout=90,
     )
