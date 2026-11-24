@@ -264,7 +264,9 @@ def run(root, stack, args):
             slug=slug,
             kind="crew",
             desired_state="on-request" if index == 1 else "running",
-            idle_timeout_ms=60000,
+            # Allow the guest’s one-minute OTP cooldown to expire before
+            # snapshotting. Its monotonic clock pauses while it is asleep.
+            idle_timeout_ms=90000,
             executable_name="crew",
             args=["drop-serve"],
             memory_mib=512,
