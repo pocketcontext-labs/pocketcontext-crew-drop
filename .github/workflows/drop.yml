@@ -22,4 +22,5 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y musl-tools
           npm install --global pnpm@10.33.2
           drop/build.sh
+          python3 drop/check.py
           CGO_ENABLED=1 go test -tags "$(cat build-tags.txt),crew_drop" ./internal/dropsupervisor ./internal/dropfiles ./internal/client ./internal/crewruntime

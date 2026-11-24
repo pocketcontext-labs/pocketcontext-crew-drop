@@ -90,7 +90,11 @@ beforeEach(() => {
       task("task00000000001", "Write the launch post", "todo"),
       task("task00000000002", "Plan the talk", "todo", other.id),
       task("task00000000003", "Fix the login", "in_progress"),
-      task("task00000000004", "Ship the release", "done"),
+      {
+        ...task("task00000000004", "Ship the release", "done"),
+        // The initial Done column shows tasks updated in the last seven days.
+        updated: new Date().toISOString(),
+      },
     ],
     reviews: [
       {

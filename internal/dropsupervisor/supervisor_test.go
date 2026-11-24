@@ -258,3 +258,32 @@ func TestLocalBootWithAbsentAsyncToken(t *testing.T) {
 		t.Fatalf("cloud attempt with missing token: %v", err)
 	}
 }
+
+// /up and auth-mode are compiled into Core; neither proves the Crew router
+// registered its JavaScript entry points. A public 200 would also be unsafe.
+func TestProbeRequiresProtectedCrewRoute(t *testing.T) {
+	s := testService(t)
+	s.domain = "crew.example.test"
+	for _, status := range []int{404, 200, 401} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/up" {
+					w.WriteHeader(200)
+					return
+				}
+				if r.Method != http.MethodPost || r.URL.Path != "/api/crew/read" || r.Host != s.domain || r.Header.Get("Authorization") != "" {
+					t.Errorf("unexpected probe: %s %s host=%q", r.Method, r.URL.Path, r.Host)
+				}
+				w.WriteHeader(status)
+			}))
+			defer server.Close()
+			target, _ := url.Parse(server.URL)
+			s.backend = target.Host
+			ready, err := s.probeCrew(context.Background(), server.Client())
+			want := status == 401
+			if ready != want || (err == nil) != want {
+				t.Fatalf("handler %d: ready=%t err=%v", status, ready, err)
+			}
+		})
+	}
+}

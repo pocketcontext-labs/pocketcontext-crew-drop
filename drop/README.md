@@ -9,9 +9,12 @@ On Linux/amd64 install Go from go.mod, a musl C compiler, binutils, Node and pnp
 ```sh
 drop/build.sh
 CGO_ENABLED=1 go test -tags "$(cat build-tags.txt),crew_drop" ./internal/client ./internal/dropfiles ./internal/dropsupervisor ./internal/crewruntime
+python3 drop/check.py
 ```
 
 Upload `drop/build/pocketcontext-crew-drop-linux-amd64` as a Drop release and verify its SHA-256 against the build output. The build checks the archive and executable digests of the embedded Litestream child, verifies static linking and enforces the 90 MiB release limit. Set the guest executable to the staged binary, arguments to `["drop-serve"]`, app port to **8080**, and HTTP readiness path to `/ready`. No arguments also starts the guest supervisor. Normal Crew CLI subcommands are available.
+
+The executable smoke test uses temporary volumes and a file replica on loopback. It checks protected route registration after restart, shared cold recovery, the original owner and database identity, and refusal to reinitialize an established app with missing replica data.
 
 The hosted origin is the exact public Drop hostname, with TLS terminated upstream. NibRunner must preserve the Host header. Only port 8080 is the public application port. The node calls the separate HTTP hook API on guest port 8081 with its per-app bearer. The supervisor forwards business traffic to Crew’s hosted route allowlist on 127.0.0.1:18080. Forwarded client-address headers are replaced with the actual peer address. A shared ingress peer can therefore share one Crew IP rate-limit budget.
 
@@ -39,7 +42,7 @@ Trust the exact issuer, audience and app subject in AWS. Grant ListBucket only u
 | New app and explicit enrollment | Reserve the new app namespace, initialize the hosted owner and schema, and persist its app identity. The pending enrollment nonce belongs to this volume so a fresh replacement cannot claim an existing app. |
 | Missing live database for an established app | Admit up to 64 waiting requests behind one recovery worker. Restore to a temporary file, validate full SQLite integrity and the app binding, then publish the canonical project snapshot and start Crew in hosted-restore mode. Timeout, overload and unavailable replicas return HTTP 503 with Retry-After. The worker retries. |
 
-Core owns the private working copy and its atomic project snapshot at `crew/project/crew.db`. Litestream reads the live database and WAL. A local restart checks the app ID and recovers interrupted write-back through Core. A fresh host receives the verified SQLite snapshot before Core opens a new private working copy. `/ready` reports that the supervisor is listening. Time a real authenticated Crew operation to measure service.
+Core owns the private working copy and its atomic project snapshot at `crew/project/crew.db`. Each backend extracts its executable hooks, migrations and reader into a fresh process directory. The private cache link resolves to the same persistent working copy, keys and OAuth state on every local restart. This prevents a power cut from leaving a reusable bundle with empty JavaScript hooks. Litestream reads the live database and WAL. A local restart checks the app ID and recovers interrupted write-back through Core. A fresh host receives the verified SQLite snapshot before Core opens a new private working copy. `/ready` reports that the supervisor is listening. Time a real authenticated Crew operation to measure service.
 
 Authenticated `GET /status` on the hook port reports data and replication states, recovery counts, waiters and UTC phase timestamps. `POST /hooks/start` and `/hooks/resume` do not require replication. `POST /hooks/suspend` drains application ingress and flushes Litestream before reopening the ingress for wake. `POST /hooks/terminate` drains before the final sync and keeps the backend quiesced until resume or exit. The node is responsible for the actual source fence before granting a destination write authority. `POST /control/sync` requests an explicit synchronized checkpoint. The acceptance harness can deliberately hold or release the hooks, AWS or recovery worker through the authenticated control API.
 

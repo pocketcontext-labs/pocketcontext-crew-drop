@@ -94,6 +94,20 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 	if err != nil {
 		return err
 	}
+	// Core v0.3.0 unpacks executable assets beside its private cache and
+	// trusts a completion marker on reuse. A guest power cut can persist
+	// that marker with empty JS files. Give each backend a fresh asset
+	// directory while resolving every private file to the locked volume.
+	runtimeDir, err := os.MkdirTemp("", "crew-runtime-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(runtimeDir)
+	privateLink := filepath.Join(runtimeDir, "private")
+	if err := os.Symlink(p.Cache, privateLink); err != nil {
+		return err
+	}
+	p.Cache = privateLink
 	proxy := &appserver.HostedProxy{Header: appserver.HostedProxyXForwardedFor, Networks: []netip.Prefix{netip.PrefixFrom(ap.Addr(), ap.Addr().BitLen())}}
 	return appserver.ServeContext(ctx, p, appserver.ServeOptions{
 		Hosted: true, Headless: true, MCP: true, MCPHandler: newMCPHandler,

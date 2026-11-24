@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -193,6 +194,26 @@ func exited(err error) error {
 	return err
 }
 
+// Probe an actual JS-registered Crew route. Core's /up can respond before we
+// know whether the executable's authenticated application handlers are usable.
+func (s *service) probeCrew(ctx context.Context, client *http.Client) (bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://"+s.backend+"/api/crew/read", strings.NewReader(`{"collection":"notes"}`))
+	if err != nil {
+		return false, err
+	}
+	req.Host = s.domain
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, ctx.Err()
+	} // no listener yet, or the operation was cancelled
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		return false, fmt.Errorf("Crew read route returned HTTP %d to an anonymous readiness probe, expected 401", resp.StatusCode)
+	}
+	return true, nil
+}
+
 func (s *service) runBackend(ctx context.Context, mode, record string) error {
 	path, err := os.Executable()
 	if err != nil {
@@ -232,19 +253,12 @@ func (s *service) runBackend(ctx context.Context, mode, record string) error {
 			return probeCtx.Err()
 		default:
 		}
-		req, err := http.NewRequestWithContext(probeCtx, "GET", "http://"+s.backend+"/up", nil)
+		ready, err := s.probeCrew(probeCtx, &httpClient)
 		if err != nil {
 			return err
 		}
-		if s.domain != "" {
-			req.Host = s.domain
-		}
-		resp, err := httpClient.Do(req)
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == 200 {
-				break
-			}
+		if ready {
+			break
 		}
 		if err := wait(probeCtx, 15*time.Millisecond); err != nil {
 			return err
