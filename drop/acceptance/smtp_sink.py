@@ -1,13 +1,14 @@
 #!/usr/bin/python3
-"""TLS-only, receive-only mailbox for one synthetic test address on a disposable host."""
+"""TLS-only, receive-only mailbox for synthetic test addresses on a disposable host."""
 
+import argparse
 import base64
 import email
 import email.policy
-import hashlib
 import hmac
 import os
 import re
+import secrets
 import socketserver
 import ssl
 from pathlib import Path
@@ -17,6 +18,10 @@ OWNER = "owner@crew-drop.invalid"
 SENDER = "login@crew-drop.invalid"
 
 
+def lost_reply_marker(base, recipient):
+    return base / f"lose-next-data-reply-{recipient}"
+
+
 class Handler(socketserver.StreamRequestHandler):
     def reply(self, line):
         self.wfile.write(line.encode("ascii") + b"\r\n")
@@ -24,8 +29,8 @@ class Handler(socketserver.StreamRequestHandler):
     def handle(self):
         self.connection.settimeout(10)
         self.reply("220 fixture ESMTP")
-        authenticated = False
-        sender = recipient = False
+        authenticated = None
+        sender = recipient = ""
         for _ in range(24):
             line = self.rfile.readline(2048).decode("ascii", "replace").strip()
             if not line:
@@ -46,16 +51,34 @@ class Handler(socketserver.StreamRequestHandler):
                     supplied = base64.b64decode(payload, validate=True)
                 except ValueError:
                     supplied = b""
-                authenticated = hmac.compare_digest(
-                    supplied, b"\x00fixture\x00" + (BASE / "password").read_bytes()
+                authenticated = next(
+                    (
+                        sender
+                        for sender, expected in self.server.credentials.items()
+                        if hmac.compare_digest(supplied, expected)
+                    ),
+                    None,
                 )
                 self.reply("235 authenticated" if authenticated else "535 invalid")
             elif verb == "MAIL" and authenticated:
-                sender = arg.lower().split(" ")[0] == "from:<" + SENDER + ">"
-                recipient = False
+                with (self.server.base / "submissions").open("ab") as counter:
+                    counter.write(b"1\n")
+                sender = (
+                    authenticated
+                    if arg.lower().split(" ")[0] == f"from:<{authenticated}>"
+                    else ""
+                )
+                recipient = ""
                 self.reply("250 sender" if sender else "553 sender denied")
             elif verb == "RCPT" and sender:
-                recipient = arg.lower().split(" ")[0] == "to:<" + OWNER + ">"
+                recipient = next(
+                    (
+                        address
+                        for address in self.server.owners
+                        if arg.lower().split(" ")[0] == f"to:<{address}>"
+                    ),
+                    "",
+                )
                 self.reply("250 recipient" if recipient else "550 recipient denied")
             elif verb == "DATA" and recipient:
                 self.reply("354 end with dot")
@@ -70,26 +93,55 @@ class Handler(socketserver.StreamRequestHandler):
                 else:
                     self.reply("552 message too large")
                     return
-                subject = str(
-                    email.message_from_bytes(message, policy=email.policy.default)[
-                        "Subject"
-                    ]
-                )
-                code = re.search(r"(?<![0-9])[0-9]{6}(?![0-9])", subject)
-                if not code:
-                    self.reply("554 synthetic sign-in code missing")
+                msg = email.message_from_bytes(message, policy=email.policy.default)
+                if sender == SENDER:
+                    plain = msg.get_body(preferencelist=("plain",))
+                    body = (
+                        plain.get_content().replace("\r\n", "\n").rstrip("\n")
+                        if plain
+                        else ""
+                    )
+                    code = re.fullmatch(
+                        r"Your sign-in code is ([0-9]{6})\.\n\nEnter this code in the app to sign in\.",
+                        body,
+                    )
+                    if (
+                        not code
+                        or msg.get_content_type() != "text/plain"
+                        or len(msg.get_all("From", [])) != 1
+                        or len(msg.get_all("To", [])) != 1
+                        or str(msg["Subject"]) != "Your sign-in code"
+                        or [a.addr_spec for a in msg["From"].addresses] != [sender]
+                        or [a.addr_spec for a in msg["To"].addresses] != [recipient]
+                    ):
+                        self.reply("554 unexpected managed sign-in message")
+                        continue
+                else:
+                    code = re.fullmatch(
+                        r"([0-9]{6}) is your Drop sign-in code", str(msg["Subject"])
+                    )
+                    if not code:
+                        self.reply("554 unexpected control plane message")
+                        continue
+                # Publish the private test mailbox atomically before acknowledging SMTP DATA.
+                nonce = secrets.token_hex(8)
+                pending = self.server.base / ("pending-" + nonce)
+                pending.write_text(code[1] + "\n")
+                pending.replace(self.server.base / f"code-{recipient}-{nonce}")
+                # Consume a single fault even if another SMTP session is in flight.
+                try:
+                    lost_reply_marker(self.server.base, recipient).unlink()
+                except FileNotFoundError:
+                    pass
+                else:
                     return
-                received = BASE / (
-                    "code-" + hashlib.sha256(os.urandom(32)).hexdigest()[:12]
-                )
-                received.write_text(code.group() + "\n")
                 self.reply("250 captured")
-                sender = recipient = False
+                sender = recipient = ""
             elif verb == "QUIT":
                 self.reply("221 goodbye")
                 return
             elif verb == "RSET":
-                sender = recipient = False
+                sender = recipient = ""
                 self.reply("250 reset")
             elif verb == "NOOP":
                 self.reply("250 ok")
@@ -113,8 +165,25 @@ class SMTPServer(socketserver.ThreadingTCPServer):
 
 if __name__ == "__main__":
     os.umask(0o077)
-    with SMTPServer(("0.0.0.0", 2525), Handler) as server:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base", type=Path, default=BASE)
+    parser.add_argument("--listen", default="0.0.0.0")
+    parser.add_argument("--port", type=int, default=2525)
+    parser.add_argument("--owner", action="append", default=[])
+    parser.add_argument("--drop-sender")
+    args = parser.parse_args()
+    with SMTPServer((args.listen, args.port), Handler) as server:
+        server.base = args.base
+        server.credentials = {
+            SENDER: b"\x00fixture\x00" + (args.base / "password").read_bytes().strip()
+        }
+        server.owners = set(args.owner or [OWNER])
+        if args.drop_sender:
+            server.credentials[args.drop_sender] = (
+                b"\x00fixture-drop\x00"
+                + (args.base / "drop-password").read_bytes().strip()
+            )
         server.context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         server.context.minimum_version = ssl.TLSVersion.TLSv1_2
-        server.context.load_cert_chain(BASE / "mail.crt", BASE / "mail.key")
+        server.context.load_cert_chain(args.base / "mail.crt", args.base / "mail.key")
         server.serve_forever()

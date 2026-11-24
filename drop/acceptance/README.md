@@ -1,5 +1,20 @@
 # Crew Drop development acceptance
 
+## Managed sign-in on a development KVM host
+
+The sign-in acceptance test starts a fresh hosted Drop server and node agent, NibRunner, two Firecracker guests and an authenticated TLS mailbox inside temporary network, PID and mount namespaces. It verifies the two owners through Drop email sign-in, creates their apps, stops Drop, restarts NibRunner, signs into both guests with Chromium, then reconnects Drop and compares direct and managed delivery when the SMTP server accepts a message and loses its final reply. It also disables one binding and signs into the other app after a request wakes its sleeping VM with Drop offline. All credentials and mailbox contents stay in the temporary directory. The host supplies its installed guest image and versions manifest read-only. Build the current Drop, NibRunner and Crew binaries and install the Crew reader’s Playwright Chromium before running:
+
+```sh
+sudo env PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright" PATH="/usr/local/lib/nibrunner/nft-shim:$PATH" \
+  unshare --net --mount --pid --fork --mount-proc --propagation private \
+  python3 -B drop/acceptance/managed_signin.py \
+  --drop ../pocketcontext-drop/bin/drop --runner ../pocketcontext-nibrunner/target/debug/nibrunnerd \
+  --crew drop/build/pocketcontext-crew-drop-linux-amd64 --node "$(node -p process.execPath)" \
+  --guest /var/lib/nibrunner/guest --versions /var/lib/nibrunner/versions.json
+```
+
+## EC2 host recovery
+
 The [24 November 2026 acceptance receipts](evidence/2026-11-24/README.md) record the completed pilot and the earlier failed pilot.
 
 This harness drives the packaged Linux/amd64 executable through the Drop agent, NibRunner HTTP proxy, guest public API and private hook port. The controller records status and timings outside both worker VMs. Source and destination get separate encrypted local disks. Both have the same workload role for this one synthetic application. The destination receives its short-lived workload assertion only after EC2 confirms the source has stopped.
@@ -25,7 +40,7 @@ python3 "$DROP_M1_PROOF/abrupt/worker.py" "$role" 'sudo cloud-init status --wait
 python3 "$DROP_M1_PROOF/abrupt/bootstrap.py" "$role"
 ```
 
-The fixture adds a temporary self-signed public CA to each disposable guest image for private test mail. It records the base and test rootfs digests. Its TLS-only SMTP server accepts one synthetic sender and recipient, requires authentication and has no forwarding operation. The extra security group on the destination accepts TCP 2525 from the public IPv4 addresses of the two workers only. Codes, tokens, SSH and signing keys stay in the private run directory or the receiving worker’s root-only tmpfs.
+Use a development Drop controller whose verified owner is the synthetic mailbox `owner@crew-drop.invalid` and install the managed-email builds on both workers. The mail fixture configures the disposable NibRunner services with a private test CA and a systemd credential. Its TLS-only SMTP server accepts one synthetic sender and recipient, requires authentication and has no forwarding operation. The extra security group on the destination accepts TCP 2525 from the public IPv4 addresses of the two workers only. Codes, tokens, SSH and signing keys stay in the private run directory or the receiving worker’s root-only tmpfs.
 
 ```sh
 python3 drop/acceptance/mail_fixture.py

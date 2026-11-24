@@ -601,6 +601,18 @@ describe("emailed sign-in code", () => {
     expect(api.loginEmailCode).not.toHaveBeenCalled();
   });
 
+  it("shows code-only instructions for managed delivery", async () => {
+    vi.mocked(api.loginMode).mockResolvedValue("email-code");
+    render(<Login />);
+    const input = await requestCode();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "If owner@example.test is the owner's address, enter the code from the email here within 15 minutes.",
+    );
+    expect(screen.queryByText(/open the link/i)).toBeNull();
+    fireEvent.change(input, { target: { value: "012345" } });
+    await waitFor(() => expect(api.loginEmailCode).toHaveBeenCalledWith("syntheticotp0001", "012345"));
+  });
+
   it("strips spaces and dashes from a pasted code and submits it", async () => {
     render(<Login />);
     const input = await requestCode();

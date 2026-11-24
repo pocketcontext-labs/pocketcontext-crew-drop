@@ -184,6 +184,8 @@ const de: Record<string, string> = {
   "This link no longer works": "Dieser Link funktioniert nicht mehr",
   "Send a new link": "Neuen Link senden",
   "Check your inbox": "Sieh in deinem Posteingang nach",
+  "If {address} is the owner's address, enter the code from the email here within 15 minutes.":
+    "Wenn {address} die E-Mail-Adresse des Eigentümers ist, gib den Code aus der E-Mail hier innerhalb von 15 Minuten ein.",
   "If {address} is the owner's address, a sign-in code and link are on their way. They work for 15 minutes.":
     "Wenn {address} die Adresse des Inhabers ist, sind ein Anmeldecode und ein Link unterwegs. Sie gelten 15 Minuten.",
   "Enter the code from the email here. The link in the email opens your browser, not this app.":

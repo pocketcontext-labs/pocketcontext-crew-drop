@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Install the isolated OTP sink and its public test CA on the two empty acceptance runners."""
+"""Install the isolated OTP sink and host relay credentials on the two empty acceptance runners."""
 
 import concurrent.futures
 import hashlib
@@ -68,51 +68,27 @@ def fixture_group(ec2, state, ips, dest):
     return group
 
 
-def trust(role):
-    report = json.loads(
-        ssh(
-            role, "sudo cat /var/lib/nibrunner/reported.json", capture_output=True
-        ).stdout
-    )
+def configure_relay(role, host):
+    report = json.loads(ssh(role, "sudo cat /var/lib/nibrunner/reported.json", capture_output=True).stdout)
     if report["instances"] or report["volumes"]:
-        raise ValueError("test CA installation requires an empty runner")
-    upload(role, CERT, "/tmp/crew-drop-test-ca.crt")
-    script = """set -eu
-cd /var/lib/nibrunner/guest
-newcert=$(sha256sum /tmp/crew-drop-test-ca.crt | cut -d' ' -f1)
-if test "$(cat crew-mail-fixture.sha256 2>/dev/null || true)" != "$newcert"; then
-    pristine=/tmp/drop-loss-install
-    original=$(jq -r '.artifacts[] | select(.name=="rootfs.ext4") | .sha256' "$pristine/manifest.json")
-    printf '%s  %s/rootfs.ext4\n' "$original" "$pristine" | sha256sum --status -c -
-    printf '%s\n' "$original" > rootfs.production-sha256
-    cp --sparse=always "$pristine/rootfs.ext4" rootfs.ext4.test
-    chmod 0644 /tmp/crew-drop-test-ca.crt
-    debugfs -w -R 'write /tmp/crew-drop-test-ca.crt /etc/ssl/certs/crew-drop-test-ca.pem' rootfs.ext4.test >/dev/null 2>&1
-    debugfs -R 'cat /etc/ssl/certs/crew-drop-test-ca.pem' rootfs.ext4.test 2>/dev/null | cmp - /tmp/crew-drop-test-ca.crt
-    sum=$(sha256sum rootfs.ext4.test | cut -d' ' -f1)
-    jq --arg sum "$sum" '(.artifacts[] | select(.name=="rootfs.ext4") | .sha256)=$sum | .version += "-crew-mail-test"' "$pristine/manifest.json" >manifest.test
-    systemctl stop nibrunnerd
-    mv rootfs.ext4.test rootfs.ext4
-    mv manifest.test manifest.json
-    jq --arg ver "$(jq -r .version manifest.json)" '.guestImage=$ver' ../versions.json > ../versions.test
-    mv ../versions.test ../versions.json
-    systemctl start nibrunnerd
-    printf '%s\n' "$newcert" > crew-mail-fixture.sha256
-fi
-debugfs -R 'cat /etc/ssl/certs/crew-drop-test-ca.pem' rootfs.ext4 2>/dev/null | cmp - /tmp/crew-drop-test-ca.crt
-cat rootfs.production-sha256
-sha256sum rootfs.ext4 | cut -d' ' -f1
-"""
-    report = (
-        ssh(role, "sudo sh -s", data=script.encode(), capture_output=True)
-        .stdout.decode()
-        .splitlines()
-    )
-    return {
-        "role": role,
-        "base_rootfs_sha256": report[-2],
-        "test_rootfs_sha256": report[-1],
-    }
+        raise ValueError("the SMTP fixture requires an empty acceptance runner")
+    folder = "/etc/nibrunner/crew-mail-test"
+    ssh(role, "sudo install -d -m 0700 " + folder)
+    upload(role, CERT, folder + "/ca.pem")
+    credential = "\n".join((
+        "host = " + json.dumps(host),
+        "port = 2525",
+        'username = "fixture"',
+        "password = " + json.dumps(PASSWORD.read_text().strip()),
+        'sender = "login@crew-drop.invalid"',
+        "ca_file = " + json.dumps(folder + "/ca.pem"),
+    ))
+    ssh(role, "sudo install -m 0600 /dev/stdin " + folder + "/smtp.toml", data=credential.encode())
+    dropin = "/etc/systemd/system/nibrunnerd.service.d"
+    ssh(role, "sudo install -d " + dropin)
+    ssh(role, "sudo install -m 0644 /dev/stdin " + dropin + "/crew-mail-test.conf",
+        data=("[Service]\nLoadCredential=sign-in-email.toml:" + folder + "/smtp.toml\n").encode())
+    ssh(role, "sudo systemctl daemon-reload && sudo systemctl restart nibrunnerd")
 
 
 def main():
@@ -141,6 +117,8 @@ def main():
                 "subjectAltName=IP:" + ips["dest"],
                 "-addext",
                 "extendedKeyUsage=serverAuth",
+                "-addext",
+                "basicConstraints=critical,CA:FALSE",
                 "-keyout",
                 KEY,
                 "-out",
@@ -169,13 +147,13 @@ def main():
         + "/server.py",
     )
     with concurrent.futures.ThreadPoolExecutor(2) as pool:
-        images = list(pool.map(trust, ("source", "dest")))
+        list(pool.map(lambda role: configure_relay(role, ips["dest"]), ("source", "dest")))
     for role in ("source", "dest"):
         # This proves both VPC paths, including destination-to-its-own-public-IPv4.
         cmd = (
             "echo QUIT | timeout 7 openssl s_client -quiet -ignore_unexpected_eof -verify_return_error -verify_ip "
             + ips["dest"]
-            + " -CAfile /tmp/crew-drop-test-ca.crt -connect "
+            + " -CAfile /etc/nibrunner/crew-mail-test/ca.pem -connect "
             + ips["dest"]
             + ":2525 2>/dev/null"
         )
@@ -194,7 +172,6 @@ def main():
                 "mail_security_group": group,
                 "public_ipv4": ips["dest"],
                 "port": 2525,
-                "images": images,
                 "ca_certificate_sha256": hashlib.sha256(CERT.read_bytes()).hexdigest(),
             },
             indent=2,

@@ -255,8 +255,8 @@ export default function Login({
             </p>
           </>
         )}
-        {mode === "email" &&
-          (link ? (
+        {(mode === "email" || mode === "email-code") &&
+          (link && mode === "email" ? (
             link.otpId && !linkFailed ? (
               <>
                 <h1 className="sr-only">{t("Log in to Crew")}</h1>
@@ -289,19 +289,23 @@ export default function Login({
               <h1>{t("Check your inbox")}</h1>
               <p role="status">
                 {t(
-                  "If {address} is the owner's address, a sign-in code and link are on their way. They work for 15 minutes.",
+                  mode === "email-code"
+                    ? "If {address} is the owner's address, enter the code from the email here within 15 minutes."
+                    : "If {address} is the owner's address, a sign-in code and link are on their way. They work for 15 minutes.",
                   { address: sentTo },
                 )}
               </p>
-              <p className="login-code-hint">
-                {isStandaloneApp()
-                  ? t(
-                      "Enter the code from the email here. The link in the email opens your browser, not this app.",
-                    )
-                  : t(
-                      "Enter the code from the email here, or open the link in it. Either one signs you in.",
-                    )}
-              </p>
+              {mode === "email" && (
+                <p className="login-code-hint">
+                  {isStandaloneApp()
+                    ? t(
+                        "Enter the code from the email here. The link in the email opens your browser, not this app.",
+                      )
+                    : t(
+                        "Enter the code from the email here, or open the link in it. Either one signs you in.",
+                      )}
+                </p>
+              )}
               {codeSpent ? (
                 <button className="primary-button" autoFocus onClick={newCode}>
                   {t("Send a new code")}

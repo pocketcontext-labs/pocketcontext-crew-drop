@@ -133,10 +133,7 @@ def main():
         audit["app_archived"] = True
     if not audit.get("app_archived"):
         for secret in dev("secret", "list", APP)["secrets"]:
-            if secret["name"] not in (
-                "CREW_DROP_HOOK_TOKEN",
-                "POCKETCONTEXT_SMTP_PASSWORD",
-            ):
+            if secret["name"] != "CREW_DROP_HOOK_TOKEN":
                 raise ValueError("unexpected secret on the synthetic app")
             dev("secret", "delete", APP, secret["name"])
         dev("app", "archive", APP)

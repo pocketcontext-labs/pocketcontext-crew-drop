@@ -55,11 +55,9 @@ def set_secret(name, path):
 
 
 def configure():
-    mail = json.loads((cloud.EVIDENCE / "mail-fixture.json").read_bytes())
     if not HOOK_TOKEN.exists():
         HOOK_TOKEN.write_text(secrets.token_urlsafe(36))
     set_secret("CREW_DROP_HOOK_TOKEN", HOOK_TOKEN)
-    set_secret("POCKETCONTEXT_SMTP_PASSWORD", PRIVATE / "mail-password")
     env = {
         "AWS_WORKLOAD_IDENTITY": "async",
         "AWS_REGION": cloud.REGION,
@@ -70,12 +68,6 @@ def configure():
         "CREW_DROP_WAIT": "30s",
         "CREW_DROP_HOOK_TIMEOUT": "30s",
         "POCKETCONTEXT_DOMAIN": RUN_CONFIG["app"]["hostname"],
-        "POCKETCONTEXT_OWNER_EMAIL": "owner@crew-drop.invalid",
-        "POCKETCONTEXT_SMTP_HOST": mail["public_ipv4"],
-        "POCKETCONTEXT_SMTP_PORT": "2525",
-        "POCKETCONTEXT_SMTP_TLS": "tls",
-        "POCKETCONTEXT_SMTP_FROM": "login@crew-drop.invalid",
-        "POCKETCONTEXT_SMTP_USERNAME": "fixture",
     }
     dev("app", "env", APP, *(k + "=" + v for k, v in env.items()))
     for role in ("source", "dest"):

@@ -14,7 +14,7 @@ CGO_ENABLED=1 go test -tags "$(cat build-tags.txt),crew_drop" ./internal/client 
 python3 drop/check.py
 ```
 
-Upload `drop/build/pocketcontext-crew-drop-linux-amd64` as a Drop release and verify its SHA-256 against the build output. The build checks the archive and executable digests of the embedded Litestream child, verifies static linking and enforces the 90 MiB release limit. Set the guest executable to the staged binary and its arguments to `["drop-serve"]`. Use `--port 8080 --health tcp` when creating the app. For an existing placement, run `drop app set APP --health tcp` and wait for that deployment to converge before activating the new executable. No arguments also starts the guest supervisor. Normal Crew CLI subcommands are available.
+Create a fresh app with `drop app create NAME --slug SLUG --kind crew --port 8080 --health tcp --executable crew --args-json '["drop-serve"]'` as its verified hosted owner. Upload `drop/build/pocketcontext-crew-drop-linux-amd64` as a Drop release and verify its SHA-256 against the build output. The build checks the archive and executable digests of the embedded Litestream child, verifies static linking and enforces the 90 MiB release limit. No arguments also starts the guest supervisor. Normal Crew CLI subcommands are available.
 
 The executable smoke test uses temporary volumes and a file replica on loopback. It checks protected route registration after restart, shared cold recovery, the original owner and database identity, and refusal to reinitialize an established app with missing replica data.
 
@@ -29,10 +29,11 @@ The hosted origin is the exact public Drop hostname, with TLS terminated upstrea
 | `CREW_DROP_BUCKET`, `AWS_REGION` | Shared replica bucket and its region. |
 | `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | App-scoped role and rotating guest token mount from the host identity broker. |
 | `CREW_DROP_HOOK_TOKEN` | A high-entropy secret shared only with the node lifecycle caller. |
-| `POCKETCONTEXT_DOMAIN`, `POCKETCONTEXT_OWNER_EMAIL` | Public Crew hostname and its one owner. |
-| `POCKETCONTEXT_SMTP_HOST`, `_PORT`, `_TLS`, `_USERNAME`, `_PASSWORD`, `_FROM` | Use the full `POCKETCONTEXT_SMTP_` prefix for each setting. These configure Crew's authenticated hosted sign-in email. |
+| `POCKETCONTEXT_DOMAIN`, `DROP_OWNER_EMAIL` | Public Crew hostname and the verified owner address Drop recorded at app creation. Drop injects the reserved owner variable. |
 | `CREW_DROP_BOOTSTRAP=1` | Allow an explicitly new app to claim an empty Crew replica namespace. Remove after initial enrollment. |
 | `CREW_DROP_WAIT`, `CREW_DROP_HOOK_TIMEOUT` | Data admission wait and hook deadline, Go durations defaulting to 10s and 12s. |
+
+Crew sends its six-digit sign-in code to the NibRunner host over vsock port 51006. The host addresses and submits the email using its own SMTP credential. Request, expiry and redemption remain in Crew. The guest needs no SMTP settings.
 
 Trust the exact issuer, audience and app subject in AWS. Grant ListBucket only under `<AppId>/` and grant the object operations required by Litestream and attachment storage only for that prefix. Use the M1 identity provisioner for dev. The app stores its enrollment at `<AppId>/crew-drop/enrollment`, SQLite under `<AppId>/crew-drop/sqlite/`, and immutable file originals under `<AppId>/files/<sha256>`. A mounted token may arrive after local serving starts. Both consumers exchange it for scoped temporary credentials when they need AWS.
 

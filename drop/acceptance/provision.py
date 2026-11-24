@@ -39,6 +39,12 @@ def main():
             raise ValueError("expected a public Canonical image")
         run = uuid.uuid4().hex[:12]
         cli = PROOF / "host/drop-dev"
+        # This proof sends test codes to a private TLS sink. The hosted Drop
+        # account that creates the app must already own this synthetic mailbox.
+        me = json.loads(subprocess.check_output([cli, "op", "me", "{}"]))
+        me = me.get("result", me)
+        if me.get("email") != "owner@crew-drop.invalid":
+            raise ValueError("use a hosted development controller with the verified owner@crew-drop.invalid account")
         app = json.loads(
             subprocess.check_output(
                 [
@@ -46,6 +52,8 @@ def main():
                     "app",
                     "create",
                     "Crew Drop acceptance",
+                    "--kind",
+                    "crew",
                     "--slug",
                     "crew-drop-" + run,
                     "--mode",
@@ -65,6 +73,8 @@ def main():
                 ]
             )
         )["app"]
+        if app.get("crew_owner_email") != "owner@crew-drop.invalid":
+            raise ValueError("unexpected creation-time Crew owner")
         cloud.save(
             {
                 "run": run,

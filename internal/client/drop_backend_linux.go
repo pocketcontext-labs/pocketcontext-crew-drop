@@ -105,6 +105,10 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 	return appserver.ServeContext(ctx, p, appserver.ServeOptions{
 		Hosted: true, Headless: true, MCP: true, MCPHandler: newMCPHandler,
 		HTTPSDomain: os.Getenv("POCKETCONTEXT_DOMAIN"), HostedHTTPAddress: addr, HostedProxy: proxy,
+		HostedConfig: &appserver.HostedConfig{
+			OwnerEmail:     os.Getenv("DROP_OWNER_EMAIL"),
+			SendSignInCode: func(code string) error { return sendDropSignInCode(ctx, code) },
+		},
 		HostedInit: init, HostedRestore: mode == "recovered",
 	})
 }

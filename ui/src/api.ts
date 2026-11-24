@@ -139,16 +139,18 @@ export async function loginPassword(password: string): Promise<void> {
     client.collection("users").authWithPassword(localIdentity, password),
   );
 }
-export type AuthMode = "email" | "password";
+export type AuthMode = "email" | "email-code" | "password";
 export async function loginMode(): Promise<AuthMode> {
   const client = new PocketBase(pb.baseURL, new BaseAuthStore());
-  const result = await client.send<{ mode: AuthMode }>(
+  const result = await client.send<{ mode: string; codeOnly?: boolean }>(
     "/api/bundle/auth-mode",
     { method: "GET" },
   );
   if (result.mode !== "email" && result.mode !== "password")
     throw new Error("Unable to load sign-in options. Please try again.");
-  return result.mode;
+  return result.mode === "email" && result.codeOnly === true
+    ? "email-code"
+    : result.mode;
 }
 /** Returns the login request id that the emailed code is bound to. */
 export async function requestEmailLogin(email: string): Promise<string> {

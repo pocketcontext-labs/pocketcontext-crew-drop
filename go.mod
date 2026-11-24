@@ -15,8 +15,9 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/jsonschema-go v0.4.3
 	github.com/mattn/go-sqlite3 v1.14.52
+	github.com/mdlayher/socket v0.5.1
 	github.com/modelcontextprotocol/go-sdk v1.7.0
-	github.com/pocketcontext-labs/pocketcontext-core v0.3.0
+	github.com/pocketcontext-labs/pocketcontext-core v0.3.2
 	github.com/tailscale/tailcat v0.7.0
 	github.com/yuin/goldmark v1.8.6
 	golang.org/x/image v0.47.0
@@ -80,7 +81,6 @@ require (
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mdlayher/netlink v1.7.3-0.20250113171957-fbb4dce95f42 // indirect
-	github.com/mdlayher/socket v0.5.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
 	github.com/pires/go-proxyproto v0.8.1 // indirect

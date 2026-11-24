@@ -58,10 +58,7 @@ class Guest:
             "CREW_DROP_BACKEND_ADDR": f"127.0.0.1:{backend}",
             "CREW_DROP_HOOK_TOKEN": self.token, "CREW_DROP_WAIT": "25s",
             "CREW_DROP_HOOK_TIMEOUT": "25s", "POCKETCONTEXT_DOMAIN": DOMAIN,
-            "POCKETCONTEXT_OWNER_EMAIL": OWNER, "POCKETCONTEXT_SMTP_FROM": "signin@" + DOMAIN,
-            "POCKETCONTEXT_SMTP_HOST": "127.0.0.1", "POCKETCONTEXT_SMTP_PORT": "1",
-            "POCKETCONTEXT_SMTP_TLS": "tls", "POCKETCONTEXT_SMTP_USERNAME": "fixture",
-            "POCKETCONTEXT_SMTP_PASSWORD": secrets.token_urlsafe(16),
+            "DROP_OWNER_EMAIL": OWNER,
             **settings,
         }
         if replica:
