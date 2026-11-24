@@ -21,6 +21,8 @@ from client import (
     RESULTS,
     check_attachment,
     expect,
+    first_application_request,
+    first_auth_mode,
     guest_ip,
     hook,
     issue_owner,
@@ -28,7 +30,6 @@ from client import (
     new_note,
     owner,
     populate,
-    public_until,
     read_note,
     request,
     safe_status,
@@ -656,36 +657,37 @@ def destination():
     signer("dest")
     journal("dest-placement-request")
     dev("place", APP, RUN_CONFIG["workers"]["dest"]["name"])
-    public_until("dest", "/ready")
-    pending = wait_status(
-        "dest",
-        lambda s: (
-            s.get("data_state") == "recovering" and s.get("held", {}).get("recovery")
-        ),
-        "fresh-listener-waiting-for-recovery",
-    )
-    if pending["restore_attempts"] != 0:
-        raise ValueError("restore started before release of test hold")
     with concurrent.futures.ThreadPoolExecutor(2) as p:
-        # The old session rejection and normal /up stay queued until the replica is restored.
+        # Send application requests from placement. Observe them via the private port.
         old = p.submit(
-            expect,
+            first_application_request,
             "dest",
             "POST",
             "/api/crew/read",
-            event="fresh-revoked-owner-request",
-            code=(401, 403),
+            "fresh-revoked-owner-request",
+            (401, 403),
             token=owner("source"),
             body={"collection": "notes", "id": rec["notes"][0]["id"]},
         )
-        up = p.submit(expect, "dest", "GET", "/up", event="fresh-first-up")
-        wait_status(
-            "dest", lambda s: s.get("data_waiters", 0) >= 2, "fresh-requests-queued"
-        )
-        if old.done() or up.done():
-            raise ValueError("a business route answered before restoring")
+        auth_mode = p.submit(first_auth_mode, "dest")
+
+        def both_queued(s):
+            for call in (old, auth_mode):
+                if call.done():
+                    call.result()
+                    raise ValueError("a business route answered before restoring")
+            return s.get("data_waiters", 0) >= 2 and s.get("recovery_attempts", 0) > 0
+
+        pending = wait_status("dest", both_queued, "fresh-requests-queued")
+        if (
+            pending["data_state"] != "recovering"
+            or not pending["held"].get("recovery")
+            or pending["restore_attempts"] != 0
+            or pending["recovery_attempts"] != 1
+        ):
+            raise ValueError("queued requests did not share one held recovery")
         ctl("dest", "/control/release?gate=recovery")
-        up.result()
+        auth_mode.result()
         old.result()
     s = wait_status(
         "dest",

@@ -101,6 +101,9 @@ def release(binary):
     staged = Path("/var/tmp/drop-m1-release") / ("crew-" + APP_ID + "-" + digest)
     subprocess.run(["sudo", "install", "-m", "0644", binary, staged], check=True)
     try:
+        # An existing dev placement may still be configured for the retired HTTP probe.
+        if dev("app", "show", APP)["app"]["health_kind"] != "tcp":
+            dev("app", "set", APP, "--health", "tcp")
         dev(
             "release",
             "upload",

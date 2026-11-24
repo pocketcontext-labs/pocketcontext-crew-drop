@@ -61,9 +61,7 @@ def main():
                     "--args-json",
                     '["drop-serve"]',
                     "--health",
-                    "http",
-                    "--health-path",
-                    "/ready",
+                    "tcp",
                 ]
             )
         )["app"]

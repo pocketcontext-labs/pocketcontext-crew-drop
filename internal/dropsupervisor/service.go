@@ -161,10 +161,6 @@ func wait(ctx context.Context, d time.Duration) error {
 }
 
 func (s *service) public(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/ready" && (r.Method == "GET" || r.Method == "HEAD") {
-		respond(w, 200, map[string]bool{"listening": true})
-		return
-	}
 	ctx, cancel := context.WithTimeout(r.Context(), s.wait)
 	defer cancel()
 	s.mu.Lock()

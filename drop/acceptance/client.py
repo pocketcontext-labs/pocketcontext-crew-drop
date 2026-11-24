@@ -89,15 +89,34 @@ def expect(role, method, path, *, event, code=200, token=None, body=None, timeou
     return metrics, hdr, content
 
 
-def public_until(role, path="/up", limit=145):
-    deadline = time.monotonic() + limit
+def first_application_request(role, method, path, event, allowed, **options):
+    # During placement NibRunner may still be installing the route. Retry only
+    # transport and runner text responses. A Crew admission 503 has a JSON body.
+    deadline = time.monotonic() + 145
     while time.monotonic() < deadline:
-        metrics, _, _ = request(role, "GET", path, timeout=8)
-        if metrics["http"] == 200:
-            journal("public-ready", role=role, path=path, **metrics)
-            return
-        time.sleep(0.24)
-    raise RuntimeError(f"{role} {path} never became available")
+        metrics, headers, body = request(role, method, path, **options)
+        code = metrics["http"]
+        if code in allowed:
+            if not headers.get("content-type", "").startswith("application/json"):
+                raise RuntimeError(f"{event}: expected a JSON response from Crew, got HTTP {code}")
+            journal(event, role=role, **metrics)
+            return body
+        if code != 0 and not (
+            code in (404, 502, 503, 504)
+            and headers.get("content-type", "").startswith("text/plain")
+        ):
+            raise RuntimeError(f"{event}: {method} {path} returned HTTP {code}")
+        journal(event + "-before-route", role=role, **metrics)
+        time.sleep(0.1)
+    raise RuntimeError(f"{event}: runner did not route {method} {path}")
+
+
+def first_auth_mode(role):
+    raw = first_application_request(
+        role, "GET", "/api/bundle/auth-mode", role + "-first-auth-mode", (200,)
+    )
+    if json.loads(raw).get("mode") != "email":
+        raise ValueError(f"{role} did not serve Crew's email sign-in mode")
 
 
 def issue_owner(role):
@@ -217,7 +236,7 @@ def check_attachment(role, item, token, step):
 
 
 def populate():
-    public_until("source")
+    first_auth_mode("source")
     token = issue_owner("source")
     bucket = write(
         "source",

@@ -75,17 +75,17 @@ func TestExistingLiveDoesNotNeedCloud(t *testing.T) {
 func TestUnreadyRequestQueueIsBoundedAndCancels(t *testing.T) {
 	s := testService(t)
 	s.wait = 35 * time.Millisecond
-	r := httptest.NewRequest("GET", "/api/crew/read", nil)
+	r := httptest.NewRequest("POST", "/api/crew/read", strings.NewReader(`{"collection":"notes"}`))
 	s.waiters = 64
 	w := httptest.NewRecorder()
 	s.public(w, r)
-	if w.Code != 503 || s.waiters != 64 {
+	if w.Code != 503 || w.Header().Get("Retry-After") != "1" || s.waiters != 64 {
 		t.Fatalf("full queue: status=%d waiters=%d", w.Code, s.waiters)
 	}
 	s.waiters = 0
 	w = httptest.NewRecorder()
 	s.public(w, r)
-	if w.Code != 503 || s.waiters != 0 {
+	if w.Code != 503 || w.Header().Get("Retry-After") != "1" || s.waiters != 0 {
 		t.Fatalf("timeout: status=%d waiters=%d", w.Code, s.waiters)
 	}
 }
@@ -105,7 +105,14 @@ func TestHookIsolationAndPublicHost(t *testing.T) {
 	s.data("ready", nil)
 	s.gates["hooks"] = make(chan struct{})
 	hookDone := make(chan int, 1)
-	go func() { code, _ := hookReq(s, "/hooks/start", "test-only-token"); hookDone <- code }()
+	go func() { code, _ := hookReq(s, "/hooks/resume", "test-only-token"); hookDone <- code }()
+	deadline := time.Now().Add(time.Second)
+	for s.status()["hook_waiters"] != 1 {
+		if time.Now().After(deadline) {
+			t.Fatal("resume hook did not reach its hold")
+		}
+		time.Sleep(time.Millisecond)
+	}
 	r := httptest.NewRequest("POST", "http://crew.example/api/crew/write", nil)
 	r.RemoteAddr = "192.0.2.12:1234"
 	r.Header.Set("X-Forwarded-For", "127.0.0.1")

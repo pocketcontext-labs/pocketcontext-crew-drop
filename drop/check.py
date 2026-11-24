@@ -74,12 +74,15 @@ class Guest:
             stdout=self.log, stderr=subprocess.STDOUT, start_new_session=True,
         )
         try:
-            self.until(lambda: self.request("/ready")[0] == 200, "public listener")
-            self.until(lambda: self.status(), "protected hook listener")
+            self.until(self.tcp_listening, "public TCP listener")
         except BaseException:
             self.close(True)
             raise
         return self
+
+    def tcp_listening(self):
+        with socket.create_connection(("127.0.0.1", self.public), timeout=1):
+            return True
 
     def __exit__(self, kind, exc, tb):
         self.close(kind is not None)
@@ -136,10 +139,13 @@ class Guest:
         code, _ = self.request(path, private=True, auth=True, method="POST")
         require(code == 200, f"{path} returned {code}")
 
+    def crew_route(self, name, payload):
+        code, _ = self.request("/api/crew/" + name, method="POST", body=payload)
+        require(code == 401, f"anonymous POST /api/crew/{name} returned {code}, expected 401 from Crew's registered route")
+
     def crew_routes(self):
-        for name, payload in (("read", {"collection": "notes"}), ("write", {})):
-            code, _ = self.request("/api/crew/" + name, method="POST", body=payload)
-            require(code == 401, f"anonymous POST /api/crew/{name} returned {code}, expected 401 from Crew's registered route")
+        self.crew_route("read", {"collection": "notes"})
+        self.crew_route("write", {})
 
     def public_ok(self):
         code, raw = self.request(PUBLIC_ROUTE)
@@ -161,13 +167,17 @@ def durable_rows(volume):
 def check(binary, scratch):
     replica, source = scratch / "replica", scratch / "source"
     with Guest(binary, scratch, source, replica, CREW_DROP_BOOTSTRAP="1") as guest:
-        guest.until(lambda: guest.status()["data_state"] == "ready", "first Crew initialization")
         guest.public_ok()
         require(guest.status()["boot_mode"] == "new", "expected explicit initial enrollment")
         code, _ = guest.request("/status", private=True)
         require(code == 401, "private status accepted an anonymous caller")
         code, _ = guest.request("/status", auth=True)
         require(code == 404, "control status is reachable on the public listener")
+        code, _ = guest.request("/ready")
+        require(code == 404, "public listener still implements a synthetic readiness route")
+        for method, path in (("GET", "/health"), ("POST", "/hooks/start")):
+            code, _ = guest.request(path, private=True, auth=True, method=method)
+            require(code == 404, f"private listener unexpectedly served {method} {path}")
         guest.crew_routes()
         baseline = durable_rows(source)
         # Record the real content digest while the process still owns its
@@ -196,8 +206,9 @@ def check(binary, scratch):
     with Guest(binary, scratch, source, None, CREW_DROP_BUCKET="synthetic-unused",
                AWS_ROLE_ARN="arn:aws:iam::123456789012:role/unused",
                AWS_WEB_IDENTITY_TOKEN_FILE=str(missing_token), CREW_DROP_HOLD_HOOKS="1") as guest:
+        guest.until(guest.status, "protected hook listener")
         with concurrent.futures.ThreadPoolExecutor(1) as pool:
-            blocked = pool.submit(guest.control, "/hooks/start")
+            blocked = pool.submit(guest.control, "/hooks/resume")
             guest.until(lambda: guest.status()["hook_waiters"] == 1, "held lifecycle request")
             guest.public_ok()
             guest.crew_routes()
@@ -213,9 +224,18 @@ def check(binary, scratch):
     target = scratch / "target"
     with Guest(binary, scratch, target, replica, CREW_DROP_HOLD_RECOVERY="1") as guest:
         with concurrent.futures.ThreadPoolExecutor(3) as pool:
-            requests = [pool.submit(guest.public_ok) for _ in range(3)]
-            guest.until(lambda: guest.status()["data_waiters"] == 3, "three pending public requests")
-            state = guest.status()
+            requests = [
+                pool.submit(guest.public_ok),
+                pool.submit(guest.crew_route, "read", {"collection": "notes"}),
+                pool.submit(guest.crew_route, "write", {}),
+            ]
+
+            def pending_recovery():
+                state = guest.status()
+                if state["data_waiters"] == 3 and state["recovery_attempts"] > 0:
+                    return state
+
+            state = guest.until(pending_recovery, "three pending public requests and a recovery worker")
             require(state["recovery_attempts"] == 1 and state["restore_attempts"] == 0,
                     "cold worker started multiple attempts or bypassed the recovery gate")
             require(not (target / "crew/private/live/data.db").exists(), "cold start opened a live database early")

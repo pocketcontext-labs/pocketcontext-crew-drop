@@ -70,7 +70,7 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) error {
 			return err
 		}
 	}
-	if event == "start" || event == "resume" {
+	if event == "resume" {
 		return nil
 	}
 	if s.frozen != nil {
@@ -127,10 +127,6 @@ func (s *service) hook(w http.ResponseWriter, r *http.Request) {
 		respond(w, 200, s.status())
 		return
 	}
-	if r.Method == "GET" && r.URL.Path == "/health" {
-		respond(w, 200, map[string]bool{"listening": true})
-		return
-	}
 	if r.Method != "POST" {
 		http.NotFound(w, r)
 		return
@@ -159,7 +155,7 @@ func (s *service) hook(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/control/sync":
 		event = "sync"
-	case "/hooks/start", "/hooks/suspend", "/hooks/resume", "/hooks/terminate":
+	case "/hooks/suspend", "/hooks/resume", "/hooks/terminate":
 	default:
 		http.NotFound(w, r)
 		return
