@@ -1,0 +1,333 @@
+{
+  "original_release": {
+    "app_id": "d-p7mln7iqn5zehgj",
+    "sha256": "c966578f35a1125d6857cba1a61e6ba63ac30bb620134c147631634bb7db05b0",
+    "bytes": 83062480,
+    "executable": "crew",
+    "argv": [
+      "drop-serve"
+    ]
+  },
+  "original_cache_diagnosis": {
+    "at": "2026-11-24T12:28:17.638254+00:00",
+    "original_release": "c966578f35a1125d6857cba1a61e6ba63ac30bb620134c147631634bb7db05b0",
+    "boot_mode": "local",
+    "complete_marker_present": true,
+    "asset_dir": "crew/app/95961c4f6a660a9f",
+    "assets": {
+      "account_access.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 1174,
+        "expected_sha256": "811347869afc736abb6c3687a6cb5d58ec0c45ff73b9bca503f0f5d1279b3354"
+      },
+      "account_access.pb.js": {
+        "bytes": 54,
+        "sha256": "d10e07764581e416b1156ef2fb21679458a153d356afe23fd76c51f501a0005b",
+        "expected_bytes": 561,
+        "expected_sha256": "1bda8a7d51cf7b1be7856acbbc0d178eaa9580f7f840153b4f0ef14eb957fa89"
+      },
+      "crew.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 64471,
+        "expected_sha256": "3948a0dc8df6ae31e5692e5bd27dc1b5c7d9bb4e05bc4d541d8e188eafe2e606"
+      },
+      "crew.pb.js": {
+        "bytes": 54,
+        "sha256": "d10e07764581e416b1156ef2fb21679458a153d356afe23fd76c51f501a0005b",
+        "expected_bytes": 1965,
+        "expected_sha256": "28cbebc535da38c6a4f4369d693deec2fe74c93fd150af47299e1089374eab83"
+      },
+      "crew_artifacts.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 21425,
+        "expected_sha256": "080ec9a457f676817591269b331cbf12b15eeee95907147d4579258d064d9caf"
+      },
+      "crew_attachments.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 33686,
+        "expected_sha256": "6b79b4237f25bc97b4f831e6dad736a22059934c4e90a0665facc5261a9f3b6d"
+      },
+      "crew_bridge.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 8259,
+        "expected_sha256": "551e1fe346dae567e0db8b259fc5a5926ec5a45382d52bb54e7aec1309f2423e"
+      },
+      "crew_capabilities.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 68641,
+        "expected_sha256": "d7c542d873d7649ac487610b1df13fdb706900cb3f53ff6a1b5fcb9529b8d8b0"
+      },
+      "crew_execution.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 27835,
+        "expected_sha256": "f4f42bff88c2a15242560e22ff7d6bb4e2772376f8545ab78dbadf397c82f559"
+      },
+      "crew_markup.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 12868,
+        "expected_sha256": "de8dbb5d4612cbb05eb31fd737931bfd835b7dc0f5ad7dd032497cc0ae2c2686"
+      },
+      "crew_references.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 6633,
+        "expected_sha256": "df7bbe97e6d2f2be4cfde02bec087828b7a742a316817258db19d40c30677bd9"
+      },
+      "crew_review.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 8757,
+        "expected_sha256": "900d884a921ac21b4514078108917e9028226f2c890c475cc4c4c2a8b7f0489d"
+      },
+      "crew_session.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 17151,
+        "expected_sha256": "e634484c20aff41e5584a94748e130925bcb8a6fce3b984be083666d0dd88549"
+      },
+      "crew_setup.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 4965,
+        "expected_sha256": "1b4c9105057bbcb2ec886dee5f60604fc9ce68778fce9cc87b4a2e4fc11acc54"
+      },
+      "crew_webhooks.js": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 52622,
+        "expected_sha256": "7dd64ee1f5c4012d7cac3378f3cbb00ffc97cf2efb0e79eecafe07f0447369cf"
+      },
+      "session_templates.json": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expected_bytes": 5990,
+        "expected_sha256": "bae77b01353ef776497f840de825bbcb4a2fc45c9c2c84377b20200e84942101"
+      }
+    },
+    "routes": [
+      {
+        "path": "/api/crew/read",
+        "collection": "notes",
+        "authenticated": false,
+        "http": 404,
+        "message": "The requested resource wasn't found."
+      },
+      {
+        "path": "/api/crew/read",
+        "collection": "notes",
+        "authenticated": true,
+        "http": 404,
+        "message": "The requested resource wasn't found."
+      },
+      {
+        "path": "/api/crew/read",
+        "collection": "buckets",
+        "authenticated": false,
+        "http": 404,
+        "message": "The requested resource wasn't found."
+      },
+      {
+        "path": "/api/crew/read",
+        "collection": "buckets",
+        "authenticated": true,
+        "http": 404,
+        "message": "The requested resource wasn't found."
+      },
+      {
+        "path": "/api/crew/schema",
+        "collection": null,
+        "authenticated": false,
+        "http": 401,
+        "message": "The request requires valid record authorization token."
+      },
+      {
+        "path": "/api/crew/schema",
+        "collection": null,
+        "authenticated": true,
+        "http": 200
+      },
+      {
+        "path": "/api/bundle/version",
+        "collection": null,
+        "authenticated": false,
+        "http": 401,
+        "message": "The request requires valid record authorization token."
+      },
+      {
+        "path": "/api/bundle/version",
+        "collection": null,
+        "authenticated": true,
+        "http": 200
+      }
+    ]
+  },
+  "intermediate_socket_rejection": {
+    "source_commit": "79325d0371db2288514adb554fa1d74be3201b7f",
+    "release_sha256": "5fe50e7740cbb55d88542b00fdbda923cd1a2119dfa6f82305a51d808f8e3250",
+    "at": "2026-11-24T12:30:56.003896+00:00",
+    "status": {
+      "boot_mode": "local",
+      "data_state": "failed",
+      "replication_state": "pending",
+      "hook_waiters": 0,
+      "data_waiters": 0,
+      "restore_attempts": 0,
+      "recovery_attempts": 0,
+      "phases": {
+        "backend_starting": "2026-11-24T12:30:00.82979691Z",
+        "hooks_listening": "2026-11-24T12:30:00.828725737Z",
+        "process_start": "2026-11-24T12:30:00.827661377Z",
+        "public_listening": "2026-11-24T12:30:00.828718202Z"
+      }
+    },
+    "backend_exit": 1,
+    "source_data_volume_preserved": true
+  },
+  "acknowledged_data_forensics": {
+    "at": "2026-11-24T12:34:23.822848+00:00",
+    "counts": {
+      "current_live_with_wal": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "current_project_snapshot": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "s3_txid_1": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "s3_txid_2": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 1,
+        "crew_notes": 1,
+        "crew_attachments": 1
+      },
+      "s3_txid_3": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "s3_txid_4": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "s3_txid_5": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      },
+      "s3_txid_6": {
+        "integrity": "ok",
+        "users": 1,
+        "crew_buckets": 0,
+        "crew_notes": 0,
+        "crew_attachments": 0
+      }
+    },
+    "expected_attachment_sha256": "ff17b6cff5f924aefbabe2c66c3702bf2150d65a46199d05101b470d72ee966e",
+    "original_attachment_bytes": 262176,
+    "preserved_objects": [
+      {
+        "key": "0000/0000000000000001-0000000000000001.ltx",
+        "bytes": 64583,
+        "sha256": "5f484e73ae17296f89d9bc389f10f25bea9418cbc8b0bea431b7aa5364b8a194"
+      },
+      {
+        "key": "0000/0000000000000002-0000000000000002.ltx",
+        "bytes": 3982,
+        "sha256": "963a77d50650ddf9ad5f6c69cc3d9ef647d9f15e271c195e607219d113023785"
+      },
+      {
+        "key": "0000/0000000000000003-0000000000000003.ltx",
+        "bytes": 64677,
+        "sha256": "d3ab6fdcc2c0f2eea0720a16f8115a0cc34367296fb8bcb38ccf7fbb7e1c0cfa"
+      },
+      {
+        "key": "0000/0000000000000004-0000000000000004.ltx",
+        "bytes": 192,
+        "sha256": "08c2b6659859899c14105336931b1e6dc10aa33f0a63a86b7c50d3b4ae94706e"
+      },
+      {
+        "key": "0000/0000000000000005-0000000000000005.ltx",
+        "bytes": 64678,
+        "sha256": "f63a66736e343e659f68c023c93b228fc3f98d267ee48434ef5010c171eddff2"
+      },
+      {
+        "key": "0000/0000000000000006-0000000000000006.ltx",
+        "bytes": 192,
+        "sha256": "de33c02ee560f713a6e7f17db983f4a2d5eee82a2f545f9278bf8399a471e2cc"
+      },
+      {
+        "key": "0001/0000000000000001-0000000000000001.ltx",
+        "bytes": 64583,
+        "sha256": "2f343d67632082a9d3e7f6e96a8489d62bb63c1d9a0aaf980b42475d006ce1dc"
+      },
+      {
+        "key": "0009/0000000000000001-0000000000000002.ltx",
+        "bytes": 66647,
+        "sha256": "fbafedff89352002f77697cfe136bafa198fcf4ee6bea01a3cda493a633199e2"
+      }
+    ],
+    "s3_txid_2_verified_original_note_and_file_metadata": true
+  },
+  "historical_record": "The earlier pilot lost its acknowledged records on its local volume and later S3 generations. An independent restore of S3 TXID 2 matched the exact original note and file metadata and immutable attachment bytes. Corrected writes use a separate enrolled app/role/volume/bucket.",
+  "image_inputs": [
+    {
+      "images": [
+        {
+          "role": "source",
+          "base_rootfs_sha256": "0483ac9442fbc197474441264681ee229f3c50a83e232e1dfd9df0450c42717c",
+          "test_rootfs_sha256": "98b6f3147eda6e6c94a1afae56afa72dbcda2a015fa593d4cc53898cc3e3e2bd"
+        },
+        {
+          "role": "dest",
+          "base_rootfs_sha256": "0483ac9442fbc197474441264681ee229f3c50a83e232e1dfd9df0450c42717c",
+          "test_rootfs_sha256": "98b6f3147eda6e6c94a1afae56afa72dbcda2a015fa593d4cc53898cc3e3e2bd"
+        }
+      ],
+      "ca_certificate_sha256": "2e0abdca83f25d47da87702cdb2cec507a4d4159fa3dc6c639ecc82c07e028cf"
+    },
+    {
+      "images": [
+        {
+          "role": "source",
+          "base_rootfs_sha256": "0483ac9442fbc197474441264681ee229f3c50a83e232e1dfd9df0450c42717c",
+          "test_rootfs_sha256": "19d7e8531378d4b7334fd350442a87e5e4ac877ede46f33436aef1a51e4eecc9"
+        },
+        {
+          "role": "dest",
+          "base_rootfs_sha256": "0483ac9442fbc197474441264681ee229f3c50a83e232e1dfd9df0450c42717c",
+          "test_rootfs_sha256": "19d7e8531378d4b7334fd350442a87e5e4ac877ede46f33436aef1a51e4eecc9"
+        }
+      ],
+      "ca_certificate_sha256": "962ff46c2075e770ba66f5393b6c38185a66759e17bc5d4a0030663ba405eb55"
+    }
+  ]
+}

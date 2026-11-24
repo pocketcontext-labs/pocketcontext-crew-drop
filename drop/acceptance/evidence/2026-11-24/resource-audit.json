@@ -1,0 +1,157 @@
+{
+  "earlier_pilot": {
+    "aws": {
+      "workers": {
+        "source": {
+          "id": "i-03eb0b3acb4e4e823",
+          "instance_type": "c8i.large",
+          "volumes": [
+            "vol-0b403d6f0f72ef4ff"
+          ],
+          "enis": [
+            "eni-094662aa62bb3756b"
+          ],
+          "block_storage": [
+            {
+              "id": "vol-0b403d6f0f72ef4ff",
+              "gib": 24,
+              "type": "gp3",
+              "encrypted": true
+            }
+          ],
+          "disks_removed": true,
+          "enis_removed": true
+        },
+        "dest": {
+          "id": "i-0631151a1ad34023f",
+          "instance_type": "c8i.large",
+          "volumes": [
+            "vol-0c83e719146deca5c"
+          ],
+          "enis": [
+            "eni-03401df1af32678ae"
+          ],
+          "block_storage": [
+            {
+              "id": "vol-0c83e719146deca5c",
+              "gib": 24,
+              "type": "gp3",
+              "encrypted": true
+            }
+          ],
+          "disks_removed": true,
+          "enis_removed": true
+        }
+      },
+      "region": "eu-north-1",
+      "app_archived": true,
+      "instances_terminated": true,
+      "security_groups_removed": [
+        "sg-0c6c02c8beaba0cf9",
+        "sg-0d6ec7bbf36e22093"
+      ],
+      "role_removed": true,
+      "oidc_removed": true,
+      "issuer_bucket_removed": true,
+      "issuer_objects_deleted": 2,
+      "issuer_bytes_deleted": 1030,
+      "replica_bucket_removed": true,
+      "replica_objects_deleted": 10,
+      "replica_bytes_deleted": 591742,
+      "ephemeral_credentials_removed": true,
+      "retained_aws_snapshots": 0,
+      "retained_running_instances": 0,
+      "retained_aws_disks": 0,
+      "retained_aws_buckets": 0,
+      "verified_at": "2026-11-24T12:45:28.943188+00:00"
+    },
+    "retained_private_archive": {
+      "at": "2026-11-24T12:40:54.134698+00:00",
+      "cipher": "OpenPGP AES-256",
+      "local_archive_bytes": 23452138,
+      "local_archive_sha256": "b75f198abe511c2be739a1eea271c90ba3ce93b32751edef5cbc35ecf09640a9",
+      "archived_s3_objects": 10,
+      "archived_s3_bytes": 591742,
+      "full_app_volume_verified": true,
+      "decrypted_payload_digest_checks": 17,
+      "aws_snapshot_created": false
+    }
+  },
+  "completed_pilot": {
+    "aws": {
+      "workers": {
+        "source": {
+          "id": "i-09e186aad337eb09d",
+          "instance_type": "c8i.large",
+          "volumes": [
+            "vol-058a3f654bee5e184"
+          ],
+          "enis": [
+            "eni-07506753e34ead8e7"
+          ],
+          "block_storage": [
+            {
+              "id": "vol-058a3f654bee5e184",
+              "gib": 24,
+              "type": "gp3",
+              "encrypted": true
+            }
+          ],
+          "disks_removed": true,
+          "enis_removed": true
+        },
+        "dest": {
+          "id": "i-040d663ebf49e6708",
+          "instance_type": "c8i.large",
+          "volumes": [
+            "vol-0e6fddf1249823cae"
+          ],
+          "enis": [
+            "eni-08b12e5299828f9b3"
+          ],
+          "block_storage": [
+            {
+              "id": "vol-0e6fddf1249823cae",
+              "gib": 24,
+              "type": "gp3",
+              "encrypted": true
+            }
+          ],
+          "disks_removed": true,
+          "enis_removed": true
+        }
+      },
+      "region": "eu-north-1",
+      "app_archived": true,
+      "instances_terminated": true,
+      "security_groups_removed": [
+        "sg-0d504cc43049f8858",
+        "sg-016e33a5813bb7b0b"
+      ],
+      "role_removed": true,
+      "oidc_removed": true,
+      "issuer_bucket_removed": true,
+      "issuer_objects_deleted": 2,
+      "issuer_bytes_deleted": 1030,
+      "replica_bucket_removed": true,
+      "replica_objects_deleted": 16,
+      "replica_bytes_deleted": 769101,
+      "ephemeral_credentials_removed": true,
+      "retained_aws_snapshots": 0,
+      "retained_running_instances": 0,
+      "retained_aws_disks": 0,
+      "retained_aws_buckets": 0,
+      "verified_at": "2026-11-24T12:45:47.668340+00:00"
+    },
+    "retained_private_archive": {
+      "at": "2026-11-24T12:45:08.147128+00:00",
+      "cipher": "OpenPGP AES-256",
+      "local_archive_bytes": 451414,
+      "local_archive_sha256": "c2210617468db9bb50b5a1f94eaf974921967b237de4acef80d119d4ead13c73",
+      "archived_s3_objects": 16,
+      "archived_s3_bytes": 769101,
+      "decrypted_payload_digest_checks": 24,
+      "aws_snapshot_created": false
+    }
+  }
+}

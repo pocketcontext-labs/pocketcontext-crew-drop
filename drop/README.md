@@ -2,6 +2,8 @@
 
 This private derivative starts at upstream Crew v0.45.4 (14fbf093ef493bb2ff92eaa256b73c28dad73864). The Drop executable contains the real Crew reader, PocketBase server, hosted email sign-in, MCP adapter and Litestream 0.5.18. It runs in one Linux/amd64 NibRunner guest per placement.
 
+The [measured development results](RESULTS.md) include the restart regression, acknowledged-write durability and a fenced empty-host recovery.
+
 ## Build and stage
 
 On Linux/amd64 install Go from go.mod, a musl C compiler, binutils, Node and pnpm from the reader toolchain, plus curl, tar and gzip. From the repository root run:

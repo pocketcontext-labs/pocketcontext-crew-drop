@@ -1,4 +1,4 @@
-**Crew on PocketContext Drop** is the private Drop derivative of Crew v0.45.4. Build and operate the single executable using the [Drop guest guide](drop/README.md).
+**Crew on PocketContext Drop** is the private Drop derivative of Crew v0.45.4. Build and operate the single executable using the [Drop guest guide](drop/README.md). See the [real-host acceptance results](drop/RESULTS.md).
 
 <a href="https://www.pocketcontext.com/crew/">
   <picture>

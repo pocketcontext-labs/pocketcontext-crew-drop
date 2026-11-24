@@ -1,0 +1,175 @@
+{
+  "date_utc": "2026-11-24",
+  "region": "eu-north-1",
+  "release": {
+    "app_id": "d-a1kx0dveh4ag853",
+    "sha256": "c8ce601c75e051ae04886f2ffb2a7f43e296761a7e56415cc94150f628fe30a2",
+    "bytes": 83078960,
+    "executable": "crew",
+    "argv": [
+      "drop-serve"
+    ],
+    "runtime_commit": "57c4280eff6e5bd663dce53501d71986883810a4"
+  },
+  "method": {
+    "samples_per_scenario": 1,
+    "worker_ec2_type": "c8i.large",
+    "guest_memory_mib": 1024,
+    "guest_vcpu": 1,
+    "guest_local_volume_mib": 2048,
+    "public_http_port": 8080,
+    "private_http_port": 8081,
+    "backend_loopback_port": 18080,
+    "http_path": "controller loopback over SSH to each worker\u2019s NibRunner proxy, with its configured Host",
+    "mail": "Private TLS-only, single-recipient SMTP sink on the disposable destination. No external mail.",
+    "timings": "Guest phase intervals use timestamps recorded in the guest. External request RTTs use the controller monotonic clock. Cross-event intervals use UTC timestamps on the same host. Each scenario was measured once."
+  },
+  "fresh_enroll": {
+    "guest_elapsed_ms": {
+      "backend_starting": 309.311,
+      "data_ready": 1176.343,
+      "hooks_listening": 1.258,
+      "litestream_started": 1929.972,
+      "public_listening": 1.25,
+      "recovery_started": 20.862,
+      "replica_ready": 2214.481
+    },
+    "owner_upload_ms": 186.011,
+    "source_owner_note_ms": 3.756,
+    "attachment_download_ms": 5.923,
+    "private_hook_unauthenticated_http": 401,
+    "public_hook_http": [
+      404,
+      404
+    ]
+  },
+  "held_hook_and_sts_denial": {
+    "mode": "local",
+    "restore_attempts": 0,
+    "guest_elapsed_ms": {
+      "backend_starting": 2.909,
+      "data_ready": 297.162,
+      "hook_resume_completed": 3649.177,
+      "hook_resume_started": 1602.616,
+      "hooks_listening": 1.043,
+      "litestream_started": 637.049,
+      "public_listening": 1.034,
+      "replica_ready": 19562.781
+    },
+    "private_hook_waiters_after_client_io": 1,
+    "replica_state_after_client_io": "retrying",
+    "first_authenticated_read_rtt_ms": 39.239,
+    "first_authenticated_write_rtt_ms": 41.641,
+    "local_readback_rtt_ms": 3.82,
+    "cached_file_rtt_ms": 11.405,
+    "drop_start_to_first_read_ms": 3328.121,
+    "drop_start_to_first_write_ms": 3331.572,
+    "measurement": "Requests began after the controller observed a pending private resume hook. Real IAM denial was verified both before and after these requests. Source accepted local commits without Litestream readiness."
+  },
+  "external_activation": {
+    "start_to_first_signed_read_ms": 1227.37,
+    "attempts": 2,
+    "http": [
+      503,
+      200
+    ],
+    "successful_request_rtt_ms": 1120.849,
+    "measurement": "The controller launches the read loop concurrently with Drop app start. The first attempt preceded route availability."
+  },
+  "same_volume_loss": {
+    "method": "SIGKILL to the single app Firecracker process, after a new locally-acknowledged note, while confirmed S3 PutObject denial applies to active sessions",
+    "ack_to_kill_trigger_ms": 8.666,
+    "recovery_to_first_signed_read_ms": 3779.823,
+    "external_attempts": 2,
+    "signed_new_write_rtt_ms": 18.673,
+    "guest_elapsed_ms": {
+      "backend_starting": 2.029,
+      "data_ready": 310.005,
+      "hooks_listening": 1.053,
+      "litestream_started": 569.233,
+      "public_listening": 1.045
+    },
+    "boot_mode": "local",
+    "restore_attempts": 0,
+    "physical_db": {
+      "note_present": true,
+      "base_only_contains_marker": true,
+      "sqlite_bytes": 528384,
+      "wal_bytes": 45352,
+      "integrity": "ok"
+    },
+    "separate_s3_restores": [
+      {
+        "marker": "after-crash-replica-still-denied",
+        "note_present": false,
+        "integrity": "ok"
+      },
+      {
+        "marker": "after-crash-replica-resumed",
+        "note_present": true,
+        "integrity": "ok"
+      }
+    ]
+  },
+  "hard_fenced_recovery": {
+    "pre_fence_acknowledged_notes": 5,
+    "restored_notes": 5,
+    "post_recovery_writes": 1,
+    "acknowledged_tail": {
+      "attempted": 21,
+      "acknowledged": 20,
+      "recovered_acknowledged": 14,
+      "lost_acknowledged": 6,
+      "unacknowledged": 1,
+      "unacknowledged_present": 0,
+      "unacknowledged_absent": 1,
+      "last_retained_to_last_ack_ms": 1086.007,
+      "contiguous_acknowledged_prefix": true,
+      "first_lost_ack_index": 15,
+      "last_retained_ack_index": 14,
+      "last_ack_index": 20
+    },
+    "attachment_sha256": "6ad772b42c3fe36f9f639431a4d34e74237ea561762c398ae57b92f34d265e02",
+    "attachment_bytes": 262176,
+    "former_session_rejected": true,
+    "fresh_owner_otp_succeeded": true,
+    "anonymous_attachment_http": 401,
+    "source_confirmed_stopped": true,
+    "db_restore_attempts": 1,
+    "ec2_stop_requested_to_fenced_ms": 6015.06,
+    "fenced_to_placement_request_ms": 2017.974,
+    "guest_elapsed_ms": {
+      "backend_starting": 3456.568,
+      "data_ready": 3776.973,
+      "hooks_listening": 1.276,
+      "litestream_started": 3777.263,
+      "public_listening": 1.263,
+      "recovery_started": 15.568,
+      "replica_ready": 5221.802,
+      "restore_finished": 3444.336,
+      "restore_started": 2631.592
+    },
+    "private_restore_start_to_finish_ms": 812.744,
+    "requests_waiting_while_held": 2,
+    "queued_up_ms": 2979.871,
+    "held_release_hook_rtt_from_start_to_receipt_ms": 300.861,
+    "placement_to_first_up_ms": 6440.108,
+    "placement_to_first_signed_read_ms": 7678.149,
+    "placement_to_signed_file_ms": 7896.854,
+    "placement_to_first_new_write_ms": 7925.676,
+    "fence_to_first_signed_read_ms": 9696.123,
+    "fence_to_signed_file_ms": 9914.828,
+    "signed_file_rtt_ms": 127.209,
+    "former_session_http": 401,
+    "observer": "Five baseline notes had a confirmed Litestream cut. Subsequent idempotent tail notes were externally journaled without another explicit flush. Fresh business reads waited through an intentional recovery hold and the owner logged back in after credential revocation."
+  },
+  "tenant_isolation": {
+    "own_file_http": 200,
+    "own_file_sha256": "6ad772b42c3fe36f9f639431a4d34e74237ea561762c398ae57b92f34d265e02",
+    "same_federated_principal_foreign_prefix_denials": {
+      "GetObject": 403,
+      "PutObject": 403,
+      "ListBucket": 403
+    }
+  }
+}
