@@ -22,7 +22,7 @@ func testService(t *testing.T) *service {
 	t.Setenv("CREW_DROP_APP_ID", "d-1234567890abcde")
 	t.Setenv("NIBRUN_DATA_DIR", t.TempDir())
 	t.Setenv("CREW_DROP_FILE_REPLICA", t.TempDir())
-	t.Setenv("CREW_DROP_HOOK_TOKEN", "test-only-token")
+	t.Setenv("NIBRUN_HOOK_TOKEN", "test-only-token")
 	s, err := fromEnvironment()
 	if err != nil {
 		t.Fatal(err)
@@ -32,6 +32,34 @@ func testService(t *testing.T) *service {
 	s.replica = r
 	s.disk = &volumeBarrier{flush: func() error { return nil }}
 	return s
+}
+
+func TestRunnerHookConfiguration(t *testing.T) {
+	s := testService(t)
+	if s.hookAddress != ":8081" {
+		t.Fatal(s.hookAddress)
+	}
+	t.Setenv("NIBRUN_HOOK_PORT", "9091")
+	s, err := fromEnvironment()
+	if err != nil || s.hookAddress != ":9091" {
+		t.Fatalf("custom hook address: %v", err)
+	}
+	t.Setenv("CREW_DROP_HOOK_ADDR", "127.0.0.1:9090")
+	if _, err := fromEnvironment(); err == nil {
+		t.Fatal("accepted an address on another port")
+	}
+	t.Setenv("CREW_DROP_HOOK_ADDR", "")
+	for _, bad := range []string{"0", "65536", "http", "127.0.0.1:8081"} {
+		t.Setenv("NIBRUN_HOOK_PORT", bad)
+		if _, err := fromEnvironment(); err == nil {
+			t.Fatalf("accepted invalid port %q", bad)
+		}
+	}
+	t.Setenv("NIBRUN_HOOK_PORT", "8081")
+	t.Setenv("NIBRUN_HOOK_TOKEN", "")
+	if _, err := fromEnvironment(); err == nil {
+		t.Fatal("accepted missing bearer")
+	}
 }
 
 func makeDB(t *testing.T, path, app string) *sql.DB {

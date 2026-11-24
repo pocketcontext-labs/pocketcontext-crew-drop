@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func (s *service) status() map[string]any {
@@ -160,7 +161,12 @@ func (s *service) hook(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), s.hookTimeout)
+	timeout := s.hookTimeout
+	if event == "suspend" {
+		// Finish the drain (or reopen ingress on failure) before the default 10s host deadline.
+		timeout = min(timeout, 9*time.Second)
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 	s.mu.Lock()
 	s.hookWaiters++

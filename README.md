@@ -115,6 +115,8 @@ connected agent can read.
 
 ## Shipped in the open
 
+The private Drop derivative ships [Crew for Drop 0.45.4-drop.1](https://github.com/pocketcontext-labs/pocketcontext-crew-drop/releases/tag/v0.45.4-drop.1).
+
 The latest release is [Crew 0.45.4](docs/releases/0.45.4.md)
 ([GitHub release](https://github.com/pocketcontext-labs/pocketcontext-crew/releases/tag/v0.45.4)).
 Every release is listed in the [changelog](CHANGELOG.md), with its release notes in

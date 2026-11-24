@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -24,6 +25,7 @@ type service struct {
 	writer                                                  *os.Process    // protected by mu
 	frozen                                                  *os.Process    // only lifecycleEvent changes this reference
 	app, root, fileReplica, bucket, region, backend, domain string
+	hookAddress                                             string
 	bootstrap                                               bool
 	token                                                   [32]byte
 	wait, hookTimeout                                       time.Duration
@@ -67,11 +69,25 @@ func fromEnvironment() (*service, error) {
 	if s.fileReplica == "" && (s.bucket == "" || s.region == "") {
 		return nil, errors.New("CREW_DROP_BUCKET and AWS_REGION required")
 	}
-	token := os.Getenv("CREW_DROP_HOOK_TOKEN")
+	token := os.Getenv("NIBRUN_HOOK_TOKEN")
 	if token == "" {
-		return nil, errors.New("CREW_DROP_HOOK_TOKEN required")
+		return nil, errors.New("NIBRUN_HOOK_TOKEN required")
 	}
 	s.token = sha256.Sum256([]byte(token))
+	port := env("NIBRUN_HOOK_PORT", "8081")
+	number, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || number == 0 {
+		return nil, errors.New("NIBRUN_HOOK_PORT must be a TCP port between 1 and 65535")
+	}
+	s.hookAddress = net.JoinHostPort("", port)
+	// Local smoke tests restrict the listener to loopback on the runner-selected port.
+	if addr := os.Getenv("CREW_DROP_HOOK_ADDR"); addr != "" {
+		_, addrPort, err := net.SplitHostPort(addr)
+		if err != nil || addrPort != port {
+			return nil, errors.New("CREW_DROP_HOOK_ADDR must use NIBRUN_HOOK_PORT")
+		}
+		s.hookAddress = addr
+	}
 	host, _, err := net.SplitHostPort(s.backend)
 	if err != nil || !net.ParseIP(host).IsLoopback() {
 		return nil, errors.New("CREW_DROP_BACKEND_ADDR must be loopback")
@@ -79,7 +95,7 @@ func fromEnvironment() (*service, error) {
 	if s.wait, err = duration("CREW_DROP_WAIT", "10s"); err != nil {
 		return nil, err
 	}
-	if s.hookTimeout, err = duration("CREW_DROP_HOOK_TIMEOUT", "12s"); err != nil {
+	if s.hookTimeout, err = duration("CREW_DROP_HOOK_TIMEOUT", "9s"); err != nil {
 		return nil, err
 	}
 	for gate, v := range map[string]string{"hooks": "CREW_DROP_HOLD_HOOKS", "aws": "CREW_DROP_HOLD_AWS", "recovery": "CREW_DROP_HOLD_RECOVERY"} {
@@ -215,7 +231,7 @@ func Run(parent context.Context) error {
 	}
 	defer public.Close()
 	s.mark("public_listening")
-	hooks, err := net.Listen("tcp", env("CREW_DROP_HOOK_ADDR", ":8081"))
+	hooks, err := net.Listen("tcp", s.hookAddress)
 	if err != nil {
 		return err
 	}
