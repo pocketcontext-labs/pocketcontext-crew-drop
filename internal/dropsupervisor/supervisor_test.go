@@ -30,6 +30,7 @@ func testService(t *testing.T) *service {
 	dir := t.TempDir()
 	r := &replica{app: s.app, binDir: dir, cfg: filepath.Join(dir, "ls.yml"), socket: filepath.Join(dir, "sync.sock"), live: filepath.Join(s.root, "data.db"), project: filepath.Join(s.root, "project.db"), url: "file://" + filepath.Join(s.fileReplica, s.app, "crew-drop", "sqlite")}
 	s.replica = r
+	s.disk = &volumeBarrier{flush: func() error { return nil }}
 	return s
 }
 

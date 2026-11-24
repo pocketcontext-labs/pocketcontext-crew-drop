@@ -57,3 +57,25 @@ func freezeWriter(ctx context.Context, p *os.Process) error {
 	}
 }
 func resumeWriter(p *os.Process) error { return p.Signal(syscall.SIGCONT) }
+
+// Keep the same descriptor for the serving lifetime. Linux then also reports
+// asynchronous writeback errors since the preceding sync on that descriptor.
+func syncVolume(volume *os.File) error {
+	conn, err := volume.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var flushErr error
+	err = conn.Control(func(fd uintptr) {
+		for {
+			flushErr = unix.Syncfs(int(fd))
+			if flushErr != unix.EINTR {
+				break
+			}
+		}
+	})
+	if err != nil {
+		return err
+	}
+	return flushErr
+}

@@ -74,8 +74,9 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) error {
 		return nil
 	}
 	if s.frozen != nil {
-		return nil
-	} // repeated lifecycle event after a successful final cut
+		// The prior cut already confirmed the unchanged remote state.
+		return s.disk.wait(ctx)
+	}
 	quiesce := event == "suspend" || event == "terminate"
 	if quiesce {
 		s.setDraining(true)
@@ -96,6 +97,11 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) error {
 	}
 	if err == nil {
 		err = s.replica.sync(ctx)
+	}
+	if err == nil {
+		// After remote sync, also push the guest's dirty pages and ext4
+		// journal through its own block device before confirming the cut.
+		err = s.disk.wait(ctx)
 	}
 	if err != nil && s.frozen != nil {
 		_ = resumeWriter(s.frozen)

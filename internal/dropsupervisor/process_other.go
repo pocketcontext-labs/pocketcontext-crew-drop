@@ -14,3 +14,5 @@ func configureChild(*exec.Cmd)            {}
 
 func freezeWriter(context.Context, *os.Process) error { return errors.New("CrewDrop requires Linux") }
 func resumeWriter(*os.Process) error                  { return errors.New("CrewDrop requires Linux") }
+
+func syncVolume(*os.File) error { return errors.New("CrewDrop requires Linux") }

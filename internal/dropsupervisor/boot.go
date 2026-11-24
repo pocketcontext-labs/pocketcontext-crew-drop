@@ -268,6 +268,11 @@ func (s *service) runBackend(ctx context.Context, mode, record string) error {
 		if err := verifyIdentity(s.replica.live, s.app); err != nil {
 			return err
 		}
+		// The app, binding and SQLite WAL are durable before the pending
+		// enrollment/restore record is removed or any request is admitted.
+		if err := s.disk.wait(ctx); err != nil {
+			return fmt.Errorf("persist initialized database: %w", err)
+		}
 		if err := os.Remove(record); err != nil {
 			return err
 		}
@@ -394,6 +399,18 @@ func (s *service) runWorkers(ctx context.Context) error {
 		destination = u.String()
 	}
 	s.replica = &replica{cfg: filepath.Join(tmp, "ls.yml"), socket: filepath.Join(tmp, "sync.sock"), live: filepath.Join(dir, "private", "live", "data.db"), project: filepath.Join(dir, "project", "crew.db"), binDir: filepath.Join(dir, "tools"), app: s.app, url: destination, region: s.region}
+	// Open the filesystem holding the authoritative database, not TMPDIR or
+	// the snapshot directory, which may be different mounts.
+	liveDir := filepath.Dir(s.replica.live)
+	if err := os.MkdirAll(liveDir, 0700); err != nil {
+		return err
+	}
+	volume, err := os.Open(liveDir)
+	if err != nil {
+		return err
+	}
+	defer volume.Close()
+	s.disk = &volumeBarrier{flush: func() error { return syncVolume(volume) }}
 	record := filepath.Join(dir, "pending-start.json")
 	for ctx.Err() == nil {
 		s.mu.Lock()

@@ -20,8 +20,9 @@ import (
 var appID = regexp.MustCompile("^d-[a-z0-9]{15}$")
 
 type service struct {
-	writer                                                  *os.Process // protected by mu
-	frozen                                                  *os.Process // only lifecycleEvent changes this reference
+	disk                                                    *volumeBarrier // published before marking the backend ready
+	writer                                                  *os.Process    // protected by mu
+	frozen                                                  *os.Process    // only lifecycleEvent changes this reference
 	app, root, fileReplica, bucket, region, backend, domain string
 	bootstrap                                               bool
 	token                                                   [32]byte
@@ -87,7 +88,7 @@ func fromEnvironment() (*service, error) {
 		}
 	}
 	target := &url.URL{Scheme: "http", Host: s.backend}
-	s.proxy = &httputil.ReverseProxy{Rewrite: func(p *httputil.ProxyRequest) {
+	s.proxy = &httputil.ReverseProxy{ModifyResponse: s.durableResponse, ErrorHandler: proxyError, Rewrite: func(p *httputil.ProxyRequest) {
 		p.SetURL(target)
 		p.Out.Host = p.In.Host
 		for _, h := range []string{"CF-Connecting-IP", "X-Real-IP", "True-Client-IP", "Forwarded", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Forwarded-For"} {
