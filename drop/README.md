@@ -1,6 +1,6 @@
 # Run Crew on Drop
 
-This private derivative starts at upstream Crew v0.45.4 (14fbf093ef493bb2ff92eaa256b73c28dad73864). The Drop executable contains the real Crew reader, PocketBase server, hosted email sign-in, MCP adapter and Litestream 0.5.18. It runs in one Linux/amd64 NibRunner guest per placement.
+This derivative starts at upstream Crew v0.45.4 (14fbf093ef493bb2ff92eaa256b73c28dad73864). The Drop executable contains the real Crew reader, PocketBase server, hosted email sign-in, MCP adapter and Litestream 0.5.18. It runs in one Linux/amd64 NibRunner guest per placement.
 
 The [measured development results](RESULTS.md) include the restart regression, acknowledged-write durability and a fenced empty-host recovery.
 
@@ -27,7 +27,7 @@ The hosted origin is the exact public Drop hostname, with TLS terminated upstrea
 | `NIBRUN_DATA_DIR` | Persistent per-app mount, normally `/app/data`. |
 | `CREW_DROP_APP_ID` | The literal NibRunner ID supplied by Drop, for example `d-000000000000001`. |
 | `CREW_DROP_BUCKET`, `AWS_REGION` | Shared replica bucket and its region. |
-| `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | App-scoped role and rotating guest token mount from the host identity broker. |
+| `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | Shared role and rotating app-scoped guest token supplied by NibRunner. |
 | `NIBRUN_HOOK_PORT`, `NIBRUN_HOOK_TOKEN` | NibRunner supplies the private hook port (defaults to 8081) and required per-app bearer. |
 | `POCKETCONTEXT_DOMAIN`, `DROP_OWNER_EMAIL` | Public Crew hostname and the verified owner address Drop recorded at app creation. Drop injects the reserved owner variable. |
 | `CREW_DROP_BOOTSTRAP=1` | Allow an explicitly new app to claim an empty Crew replica namespace. Remove after initial enrollment. |
