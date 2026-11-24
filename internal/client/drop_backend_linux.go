@@ -94,26 +94,61 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 	if err != nil {
 		return err
 	}
-	// Core v0.3.0 unpacks executable assets beside its private cache and
-	// trusts a completion marker on reuse. A guest power cut can persist
-	// that marker with empty JS files. Give each backend a fresh asset
-	// directory while resolving every private file to the locked volume.
-	runtimeDir, err := os.MkdirTemp("", "crew-runtime-")
+	// Keep Core's socket directory and SQLite paths physically on the volume.
+	// Only the generated code and reader are rebuilt for this backend process.
+	runtimeDir, err := freshDropAssetDirectory(filepath.Dir(p.Cache))
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(runtimeDir)
-	privateLink := filepath.Join(runtimeDir, "private")
-	if err := os.Symlink(p.Cache, privateLink); err != nil {
-		return err
-	}
-	p.Cache = privateLink
 	proxy := &appserver.HostedProxy{Header: appserver.HostedProxyXForwardedFor, Networks: []netip.Prefix{netip.PrefixFrom(ap.Addr(), ap.Addr().BitLen())}}
 	return appserver.ServeContext(ctx, p, appserver.ServeOptions{
 		Hosted: true, Headless: true, MCP: true, MCPHandler: newMCPHandler,
 		HTTPSDomain: os.Getenv("POCKETCONTEXT_DOMAIN"), HostedHTTPAddress: addr, HostedProxy: proxy,
 		HostedInit: init, HostedRestore: mode == "recovered",
 	})
+}
+
+// Core places executable assets in the sibling "app" and accepts a .complete
+// marker on re-use. After an unclean guest stop the marker can coexist with
+// zero-byte JavaScript. Select an empty process directory before Core unpacks.
+func freshDropAssetDirectory(crewDir string) (string, error) {
+	tmp, err := os.MkdirTemp("", "crew-runtime-")
+	if err != nil {
+		return "", err
+	}
+	ok := false
+	defer func() {
+		if !ok {
+			os.RemoveAll(tmp)
+		}
+	}()
+	link := filepath.Join(crewDir, "."+filepath.Base(tmp))
+	if err := os.Symlink(tmp, link); err != nil {
+		return "", err
+	}
+	defer os.Remove(link)
+	app := filepath.Join(crewDir, "app")
+	info, err := os.Lstat(app)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	if info != nil && info.IsDir() {
+		// Preserve a previous build's real cache for diagnosis. Current builds
+		// replace only a symlink and never follow or remove its old target.
+		legacy, err := os.MkdirTemp(crewDir, ".prior-code-")
+		if err != nil {
+			return "", err
+		}
+		if err := os.Rename(app, filepath.Join(legacy, "app")); err != nil {
+			return "", err
+		}
+	}
+	if err := os.Rename(link, app); err != nil {
+		return "", err
+	}
+	ok = true
+	return tmp, nil
 }
 
 func bindDropDatabase(app core.App, appID string, initialize bool) error {
