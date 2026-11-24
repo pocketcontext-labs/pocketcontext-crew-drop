@@ -62,7 +62,9 @@ func (s *service) reserveNew(ctx context.Context, nonce string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	cfg.Credentials = aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(sts.NewFromConfig(cfg), arn, stscreds.IdentityTokenFile(token)))
+	cfg.Credentials = aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(sts.NewFromConfig(cfg), arn, stscreds.IdentityTokenFile(token), func(o *stscreds.WebIdentityRoleOptions) {
+		o.RoleSessionName = s.app
+	}))
 	client := s3.NewFromConfig(cfg)
 	prefix := s.app + "/crew-drop/"
 	key := prefix + "enrollment"

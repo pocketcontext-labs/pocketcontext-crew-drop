@@ -56,7 +56,7 @@ func FromEnvironment() (Objects, error) {
 	}
 	cfg := aws.Config{Region: region, Credentials: aws.AnonymousCredentials{}}
 	provider := stscreds.NewWebIdentityRoleProvider(sts.NewFromConfig(cfg), role, stscreds.IdentityTokenFile(file), func(o *stscreds.WebIdentityRoleOptions) {
-		o.RoleSessionName = "crew-files-" + id
+		o.RoleSessionName = id
 	})
 	cfg.Credentials = aws.NewCredentialsCache(workloadIdentity{file, provider}, func(o *aws.CredentialsCacheOptions) {
 		o.ExpiryWindow = time.Minute
