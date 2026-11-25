@@ -25,7 +25,7 @@ if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then revision=
 pkg=github.com/pocketcontext-labs/pocketcontext-crew/internal/buildinfo
 output=pocketcontext-crew-drop-linux-amd64
 CC="${CC:-musl-gcc}" CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -tags "$tags" \
-  -ldflags "-s -w -linkmode external -extldflags=-static -X $pkg.Version=0.45.4-drop.2 -X $pkg.Commit=$revision" \
+  -ldflags "-s -w -linkmode external -extldflags=-static -X $pkg.Version=0.45.4-drop.3 -X $pkg.Commit=$revision" \
   -o "$tmp/$output" ./cmd/pocketcontext-crew
 if readelf -lW "$tmp/$output" | grep -E 'INTERP|DYNAMIC'; then echo 'Expected a static ELF' >&2; exit 1; fi
 bytes=$(stat -c %s "$tmp/$output")

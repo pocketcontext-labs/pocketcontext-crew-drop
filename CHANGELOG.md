@@ -5,6 +5,7 @@ release notes in [docs/releases/](docs/releases/); upgrade steps are in
 [docs/upgrades.md](docs/upgrades.md). Downloads are on the
 [GitHub releases page](https://github.com/pocketcontext-labs/pocketcontext-crew/releases).
 
+- **[0.45.4-drop.3](docs/releases/0.45.4-drop.3.md)** · [release](https://github.com/pocketcontext-labs/pocketcontext-crew-drop/releases/tag/v0.45.4-drop.3) · Crew on Drop can use the node's S3 endpoint instead of AWS credentials.
 - **[0.45.4-drop.2](docs/releases/0.45.4-drop.2.md)** · [release](https://github.com/pocketcontext-labs/pocketcontext-crew-drop/releases/tag/v0.45.4-drop.2) · Crew on Drop syncs every 10 seconds and confirms replication on suspend and terminate.
 - **[0.45.4-drop.1](docs/releases/0.45.4-drop.1.md)** · [release](https://github.com/pocketcontext-labs/pocketcontext-crew-drop/releases/tag/v0.45.4-drop.1) · Crew uses NibRunner’s private hook port and bearer.
 - **[0.45.4](docs/releases/0.45.4.md)** · [release](https://github.com/pocketcontext-labs/pocketcontext-crew/releases/tag/v0.45.4) · Mobile Notes uses a compact bucket selector with note counts.
