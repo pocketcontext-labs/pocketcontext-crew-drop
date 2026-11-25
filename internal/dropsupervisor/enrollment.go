@@ -15,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
+
+	"github.com/pocketcontext-labs/pocketcontext-crew/internal/dropfiles"
 )
 
 func (s *service) reserveNew(ctx context.Context, nonce string) (bool, error) {
@@ -54,18 +56,10 @@ func (s *service) reserveNew(ctx context.Context, nonce string) (bool, error) {
 		}
 		return err == nil, err
 	}
-	arn, token := os.Getenv("AWS_ROLE_ARN"), os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
-	if arn == "" || token == "" {
-		return false, errors.New("workload identity settings unavailable")
-	}
-	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(s.region), config.WithSharedConfigFiles([]string{}), config.WithSharedCredentialsFiles([]string{}), config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	client, err := s.enrollmentClient(ctx)
 	if err != nil {
 		return false, err
 	}
-	cfg.Credentials = aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(sts.NewFromConfig(cfg), arn, stscreds.IdentityTokenFile(token), func(o *stscreds.WebIdentityRoleOptions) {
-		o.RoleSessionName = s.app
-	}))
-	client := s3.NewFromConfig(cfg)
 	prefix := s.app + "/crew-drop/"
 	key := prefix + "enrollment"
 	objects, err := client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{Bucket: &s.bucket, Prefix: &prefix, MaxKeys: aws.Int32(1)})
@@ -92,6 +86,30 @@ func (s *service) reserveNew(ctx context.Context, nonce string) (bool, error) {
 		return false, fmt.Errorf("reserve enrollment: %s", errorCode(err))
 	}
 	return true, nil
+}
+
+// enrollmentClient uses the host services endpoint when NibRunner set one,
+// otherwise the app's workload identity.
+func (s *service) enrollmentClient(ctx context.Context) (*s3.Client, error) {
+	endpoint, err := dropfiles.HostEndpoint()
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		return dropfiles.NewHostClient(s.region, endpoint), nil
+	}
+	arn, token := os.Getenv("AWS_ROLE_ARN"), os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+	if arn == "" || token == "" {
+		return nil, errors.New("workload identity settings unavailable")
+	}
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(s.region), config.WithSharedConfigFiles([]string{}), config.WithSharedCredentialsFiles([]string{}), config.WithCredentialsProvider(aws.AnonymousCredentials{}))
+	if err != nil {
+		return nil, err
+	}
+	cfg.Credentials = aws.NewCredentialsCache(stscreds.NewWebIdentityRoleProvider(sts.NewFromConfig(cfg), arn, stscreds.IdentityTokenFile(token), func(o *stscreds.WebIdentityRoleOptions) {
+		o.RoleSessionName = s.app
+	}))
+	return s3.NewFromConfig(cfg), nil
 }
 
 func errorCode(err error) string {

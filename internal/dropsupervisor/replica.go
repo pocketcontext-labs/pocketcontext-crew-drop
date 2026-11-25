@@ -59,6 +59,9 @@ func replicaSyncInterval() time.Duration {
 type replica struct {
 	bin, binDir, cfg, socket, live, project, app, url, region string
 	syncInterval                                              time.Duration
+	// endpoint is the host services S3 endpoint (path-style, placeholder
+	// keys from the environment), empty with workload identity.
+	endpoint string
 }
 
 // litestreamConfig renders the Litestream 0.5.18 configuration. Keys follow
@@ -75,6 +78,9 @@ func (r *replica) litestreamConfig() string {
 	config := fmt.Sprintf("levels:\n  - interval: 5m\n  - interval: 4h\nsnapshot:\n  interval: 24h\n  retention: 72h\nl0-retention-check-interval: 4h\nsocket:\n  enabled: true\n  path: %q\ndbs:\n  - path: %q\n    replica:\n      url: %q\n      sync-interval: %s\n", r.socket, r.live, r.url, interval)
 	if strings.HasPrefix(r.url, "s3://") {
 		config += fmt.Sprintf("      region: %q\n", r.region)
+		if r.endpoint != "" {
+			config += fmt.Sprintf("      endpoint: %q\n      force-path-style: true\n", r.endpoint)
+		}
 	}
 	return config
 }

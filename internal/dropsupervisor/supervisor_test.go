@@ -6,6 +6,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -321,5 +323,86 @@ func TestProbeRequiresProtectedCrewRoute(t *testing.T) {
 				t.Fatalf("handler %d: ready=%t err=%v", status, ready, err)
 			}
 		})
+	}
+}
+
+// With NibRunner host services the guest reaches S3 only through the
+// loopback endpoint with placeholder keys: no token wait, enrollment through
+// the endpoint and a Litestream replica on it, path-style.
+func TestHostServicesEndpoint(t *testing.T) {
+	s := testService(t)
+	s.fileReplica, s.bucket, s.region = "", "synthetic-bucket", "eu-north-1"
+	objects := map[string]string{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Authorization"), "Credential=placeholder-key/") {
+			w.WriteHeader(403)
+			return
+		}
+		key := strings.TrimPrefix(r.URL.Path, "/synthetic-bucket/")
+		switch {
+		case r.Method == "GET" && r.URL.Query().Get("list-type") == "2":
+			fmt.Fprint(w, `<ListBucketResult>`)
+			for k := range objects {
+				if strings.HasPrefix(k, r.URL.Query().Get("prefix")) {
+					fmt.Fprintf(w, `<Contents><Key>%s</Key><Size>1</Size></Contents>`, k)
+				}
+			}
+			fmt.Fprint(w, `</ListBucketResult>`)
+		case r.Method == "PUT":
+			if _, ok := objects[key]; ok && r.Header.Get("If-None-Match") == "*" {
+				w.WriteHeader(412)
+				fmt.Fprint(w, `<Error><Code>PreconditionFailed</Code></Error>`)
+				return
+			}
+			b, _ := io.ReadAll(r.Body)
+			objects[key] = string(b)
+		case r.Method == "GET":
+			v, ok := objects[key]
+			if !ok {
+				w.WriteHeader(404)
+				fmt.Fprint(w, `<Error><Code>NoSuchKey</Code></Error>`)
+				return
+			}
+			fmt.Fprint(w, v)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("AWS_ROLE_ARN", "")
+	t.Setenv("AWS_WEB_IDENTITY_TOKEN_FILE", "")
+	t.Setenv("AWS_ACCESS_KEY_ID", "placeholder-key")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "placeholder-secret")
+	t.Setenv("AWS_ENDPOINT_URL_S3", server.URL)
+	quick, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if err := s.cloud(quick); err != nil {
+		t.Fatalf("cloud with host services: %v", err)
+	}
+	for _, tc := range []struct {
+		nonce string
+		want  bool
+	}{{"first", true}, {"first", true}, {"second", false}} {
+		fresh, err := s.reserveNew(context.Background(), tc.nonce)
+		if err != nil || fresh != tc.want {
+			t.Fatalf("reserve %q = %t,%v", tc.nonce, fresh, err)
+		}
+	}
+	if objects[s.app+"/crew-drop/enrollment"] != "first" {
+		t.Fatalf("enrollment %v", objects)
+	}
+	t.Setenv("AWS_ENDPOINT_URL_S3", "https://s3.eu-north-1.amazonaws.com")
+	if err := s.cloud(quick); err == nil {
+		t.Fatal("accepted a non-loopback endpoint")
+	}
+	if _, err := packaged.ReadFile("assets/litestream-linux-amd64.gz"); err != nil {
+		t.Skip("drop/build.sh stages the release payload")
+	}
+	r := *s.replica
+	r.url, r.region, r.endpoint = "s3://synthetic-bucket/"+s.app+"/crew-drop/sqlite", "eu-north-1", server.URL
+	if err := r.prepare(); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _ := os.ReadFile(r.cfg)
+	if !strings.Contains(string(cfg), fmt.Sprintf("endpoint: %q\n      force-path-style: true\n", server.URL)) || strings.Contains(string(cfg), "placeholder") {
+		t.Fatalf("Litestream config:\n%s", cfg)
 	}
 }

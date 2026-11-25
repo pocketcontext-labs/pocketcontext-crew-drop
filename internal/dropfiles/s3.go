@@ -50,6 +50,17 @@ func FromEnvironment() (Objects, error) {
 	if !appID.MatchString(id) || bucket == "" {
 		return nil, errors.New("Drop file storage requires a literal CREW_DROP_APP_ID and CREW_DROP_BUCKET")
 	}
+	endpoint, err := HostEndpoint()
+	if err != nil {
+		return nil, err
+	}
+	if endpoint != "" {
+		if os.Getenv("AWS_REGION") == "" {
+			return nil, errors.New("Drop file storage requires AWS_REGION")
+		}
+		client := NewHostClient(os.Getenv("AWS_REGION"), endpoint)
+		return &s3Objects{client: client, credentials: client.Options().Credentials, bucket: bucket, prefix: id + "/files/"}, nil
+	}
 	region, role, file := os.Getenv("AWS_REGION"), os.Getenv("AWS_ROLE_ARN"), os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
 	if region == "" || role == "" || file == "" {
 		return nil, errors.New("Drop file storage requires AWS_REGION, AWS_ROLE_ARN and AWS_WEB_IDENTITY_TOKEN_FILE")

@@ -31,6 +31,7 @@ The hosted origin is the exact public Drop hostname, with TLS terminated upstrea
 | `CREW_DROP_APP_ID` | The literal NibRunner ID supplied by Drop, for example `d-000000000000001`. |
 | `CREW_DROP_BUCKET`, `AWS_REGION` | Shared replica bucket and its region. |
 | `AWS_ROLE_ARN`, `AWS_WEB_IDENTITY_TOKEN_FILE` | Shared role and rotating app-scoped guest token supplied by NibRunner. |
+| `AWS_ENDPOINT_URL_S3`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Host services mode instead of the two above. NibRunner sets them when the node serves S3 (`hostServices.s3`): a loopback endpoint (`http://127.0.0.1:9000`, relayed to the host over vsock 51007) and placeholder keys. Litestream, attachments and enrollment use the endpoint path-style. The host drops the guest's signature, confines requests to `<AppId>/` and signs with the app's own session. The guest holds no AWS credential and waits for no token. |
 | `NIBRUN_HOOK_PORT`, `NIBRUN_HOOK_TOKEN` | NibRunner supplies the private hook port (defaults to 8081) and required per-app bearer. |
 | `POCKETCONTEXT_DOMAIN`, `DROP_OWNER_EMAIL` | Public Crew hostname and the verified owner address Drop recorded at app creation. Drop injects the reserved owner variable. |
 | `CREW_DROP_BOOTSTRAP=1` | Allow an explicitly new app to claim an empty Crew replica namespace. Remove after initial enrollment. |
@@ -39,7 +40,7 @@ The hosted origin is the exact public Drop hostname, with TLS terminated upstrea
 
 Crew sends its six-digit sign-in code to the NibRunner host over vsock port 51006. The host addresses and submits the email using its own SMTP credential. Request, expiry and redemption remain in Crew. The guest needs no SMTP settings.
 
-Trust the node issuer and expected audience and constrain the app subject in AWS. Grant ListBucket only under `<AppId>/` and grant the object operations required by Litestream and attachment storage only for that prefix. Drop hosts use one shared role scoped by the signed app ID session tag. The app stores its enrollment at `<AppId>/crew-drop/enrollment`, SQLite under `<AppId>/crew-drop/sqlite/`, and immutable file originals under `<AppId>/files/<sha256>`. A mounted token may arrive after local serving starts. Both consumers exchange it for scoped temporary credentials when they need AWS.
+In host services mode the node, not the guest, exchanges the app's token. The same role, prefix and object grants apply to the host's requests. Trust the node issuer and expected audience and constrain the app subject in AWS. Grant ListBucket only under `<AppId>/` and grant the object operations required by Litestream and attachment storage only for that prefix. Drop hosts use one shared role scoped by the signed app ID session tag. The app stores its enrollment at `<AppId>/crew-drop/enrollment`, SQLite under `<AppId>/crew-drop/sqlite/`, and immutable file originals under `<AppId>/files/<sha256>`. A mounted token may arrive after local serving starts. Both consumers exchange it for scoped temporary credentials when they need AWS.
 
 ## Startup, shutdown and recovery
 
