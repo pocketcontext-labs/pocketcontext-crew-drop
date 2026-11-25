@@ -362,7 +362,7 @@ func (s *service) runLitestream(ctx context.Context) error {
 			return err
 		}
 	}
-	if err := r.sync(startCtx); err != nil {
+	if _, err := r.sync(startCtx); err != nil {
 		return err
 	}
 	s.replication("ready", nil)
@@ -398,7 +398,7 @@ func (s *service) runWorkers(ctx context.Context) error {
 		u := url.URL{Scheme: "file", Path: filepath.Join(s.fileReplica, prefix)}
 		destination = u.String()
 	}
-	s.replica = &replica{cfg: filepath.Join(tmp, "ls.yml"), socket: filepath.Join(tmp, "sync.sock"), live: filepath.Join(dir, "private", "live", "data.db"), project: filepath.Join(dir, "project", "crew.db"), binDir: filepath.Join(dir, "tools"), app: s.app, url: destination, region: s.region}
+	s.replica = &replica{cfg: filepath.Join(tmp, "ls.yml"), socket: filepath.Join(tmp, "sync.sock"), live: filepath.Join(dir, "private", "live", "data.db"), project: filepath.Join(dir, "project", "crew.db"), binDir: filepath.Join(dir, "tools"), app: s.app, url: destination, region: s.region, syncInterval: s.syncInterval}
 	// Open the filesystem holding the authoritative database, not TMPDIR or
 	// the snapshot directory, which may be different mounts.
 	liveDir := filepath.Dir(s.replica.live)

@@ -28,7 +28,7 @@ type service struct {
 	hookAddress                                             string
 	bootstrap                                               bool
 	token                                                   [32]byte
-	wait, hookTimeout                                       time.Duration
+	wait, hookTimeout, syncInterval                         time.Duration
 	proxy                                                   *httputil.ReverseProxy
 	replica                                                 *replica
 
@@ -39,6 +39,7 @@ type service struct {
 	mode, dataState, replicaState, lastDataError, lastReplicaError string
 	waiters, hookWaiters, active, recoveries, restores             int
 	draining                                                       bool
+	lastHook                                                       *hookOutcome
 	lifecycle                                                      chan struct{}
 }
 
@@ -98,6 +99,7 @@ func fromEnvironment() (*service, error) {
 	if s.hookTimeout, err = duration("CREW_DROP_HOOK_TIMEOUT", "9s"); err != nil {
 		return nil, err
 	}
+	s.syncInterval = replicaSyncInterval()
 	for gate, v := range map[string]string{"hooks": "CREW_DROP_HOLD_HOOKS", "aws": "CREW_DROP_HOLD_AWS", "recovery": "CREW_DROP_HOLD_RECOVERY"} {
 		if os.Getenv(v) == "1" {
 			s.gates[gate] = make(chan struct{})

@@ -7,15 +7,19 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -28,8 +32,51 @@ var packaged embed.FS
 
 const litestreamDigest = "f2d452c1527be81f06d5f135655b81b0e8d9a338cb4c2825cf2243134bc2dbd6"
 
+// Replication cost settings. S3 PUTs scale with write-active seconds divided
+// by the sync interval; restore egress scales with the snapshot plus the
+// compacted history after it.
+const (
+	defaultSyncInterval = 10 * time.Second
+	minSyncInterval     = time.Second
+	maxSyncInterval     = 300 * time.Second
+)
+
+// replicaSyncInterval reads DROP_REPLICA_SYNC_INTERVAL. An invalid value is
+// logged and replaced by the default so the guest still opens its port.
+func replicaSyncInterval() time.Duration {
+	raw := os.Getenv("DROP_REPLICA_SYNC_INTERVAL")
+	if raw == "" {
+		return defaultSyncInterval
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil || d < minSyncInterval || d > maxSyncInterval {
+		log.Printf("CrewDrop ignored DROP_REPLICA_SYNC_INTERVAL=%q: use a Go duration from %s to %s; using %s", raw, minSyncInterval, maxSyncInterval, defaultSyncInterval)
+		return defaultSyncInterval
+	}
+	return d
+}
+
 type replica struct {
 	bin, binDir, cfg, socket, live, project, app, url, region string
+	syncInterval                                              time.Duration
+}
+
+// litestreamConfig renders the Litestream 0.5.18 configuration. Keys follow
+// cmd/litestream/main.go at v0.5.18: levels are L1..Ln compaction intervals,
+// the top-level snapshot block sets the L9 snapshot interval and retention.
+// A 5-minute L1 keeps restores from replaying hours of per-sync L0 files and
+// the daily snapshot bounds restore size; 72 hours of snapshots keep three
+// days of point-in-time history.
+func (r *replica) litestreamConfig() string {
+	interval := r.syncInterval
+	if interval == 0 {
+		interval = defaultSyncInterval
+	}
+	config := fmt.Sprintf("levels:\n  - interval: 5m\n  - interval: 4h\nsnapshot:\n  interval: 24h\n  retention: 72h\nl0-retention-check-interval: 4h\nsocket:\n  enabled: true\n  path: %q\ndbs:\n  - path: %q\n    replica:\n      url: %q\n      sync-interval: %s\n", r.socket, r.live, r.url, interval)
+	if strings.HasPrefix(r.url, "s3://") {
+		config += fmt.Sprintf("      region: %q\n", r.region)
+	}
+	return config
 }
 
 func (r *replica) prepare() error {
@@ -43,11 +90,7 @@ func (r *replica) prepare() error {
 	if err := unpackLitestream(p); err != nil {
 		return err
 	}
-	config := fmt.Sprintf("levels:\n  - interval: 4h\nl0-retention-check-interval: 4h\nsocket:\n  enabled: true\n  path: %q\ndbs:\n  - path: %q\n    replica:\n      url: %q\n      sync-interval: 1s\n", r.socket, r.live, r.url)
-	if strings.HasPrefix(r.url, "s3://") {
-		config += fmt.Sprintf("      region: %q\n", r.region)
-	}
-	if err := os.WriteFile(r.cfg, []byte(config), 0600); err != nil {
+	if err := os.WriteFile(r.cfg, []byte(r.litestreamConfig()), 0600); err != nil {
 		return err
 	}
 	r.bin = p
@@ -106,8 +149,41 @@ func (r *replica) command(ctx context.Context, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (r *replica) sync(ctx context.Context) error {
-	return r.command(ctx, "sync", "-wait", "-socket", r.socket, "-timeout", "30", r.live).Run()
+// syncResult is Litestream's confirmation of a waited sync.
+type syncResult struct {
+	TXID        uint64  `json:"txid"`
+	ReplicaTXID *uint64 `json:"replica_txid"`
+}
+
+// sync asks the running Litestream, over its local control socket, to copy
+// the live WAL to the replica and waits for the upload. It succeeds only when
+// Litestream reports a replica position at or beyond the local position. The
+// client timeout ends before the caller's deadline so a hook still answers.
+func (r *replica) sync(ctx context.Context) (syncResult, error) {
+	seconds := 30
+	if deadline, ok := ctx.Deadline(); ok {
+		seconds = max(1, int(time.Until(deadline)/time.Second))
+	}
+	out, err := r.command(ctx, "sync", "-wait", "-json", "-socket", r.socket, "-timeout", strconv.Itoa(seconds), r.live).Output()
+	var result syncResult
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && len(exit.Stderr) > 0 {
+			msg := strings.TrimSpace(string(exit.Stderr))
+			if len(msg) > 200 {
+				msg = msg[len(msg)-200:]
+			}
+			return result, fmt.Errorf("litestream sync: %w: %s", err, msg)
+		}
+		return result, fmt.Errorf("litestream sync: %w", err)
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return result, fmt.Errorf("litestream sync: unreadable confirmation: %w", err)
+	}
+	if result.ReplicaTXID == nil || *result.ReplicaTXID < result.TXID {
+		return result, errors.New("litestream sync: replica position behind the local database")
+	}
+	return result, nil
 }
 
 func verifyIdentity(path, app string) error {
