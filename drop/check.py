@@ -41,7 +41,8 @@ def check_manifest(binary, directory):
     require(manifest == {
         "schema": "drop.manifest/v1", "app": "crew", "http_port": 8080, "hook_port": 8081,
         "health": "tcp", "hooks": ["suspend", "resume", "terminate"],
-        "requires": ["persistent_volume", "s3_replica", "verified_owner_email", "sign_in_email"],
+        "requires": ["persistent_volume", "verified_owner_email", "sign_in_email"],
+        "optional": ["s3_replica"],
         "minimum": {"memory_mib": 512, "cpu_quarters": 4, "disk_mib": 1024},
     }, "unexpected Drop manifest")
     invalid = subprocess.run([*args, "extra"], **options)
@@ -184,6 +185,27 @@ def durable_rows(volume):
         return owners[0], app_ids[0]
 
 
+def check_trial(binary, scratch):
+    source, replica = scratch / "trial", scratch / "paid-replica"
+    with Guest(binary, scratch, source, None, CREW_DROP_BOOTSTRAP="1") as guest:
+        guest.public_ok()
+        guest.crew_routes()
+        guest.until(lambda: guest.status()["replication_state"] == "disabled", "local trial")
+        owner = durable_rows(source)
+        code, raw = guest.request("/hooks/suspend", private=True, method="POST", auth=True)
+        require(code == 200 and json.loads(raw)["replication"] == "disabled", "trial suspend failed")
+        guest.control("/hooks/resume")
+    with Guest(binary, scratch, source, replica) as guest:
+        guest.public_ok()
+        require(guest.status()["boot_mode"] == "local", "upgrade did not reopen the local database")
+        guest.until(lambda: guest.status()["replication_state"] == "ready", "first paid replica")
+        guest.control("/control/sync")
+    with Guest(binary, scratch, scratch / "restored-trial", replica) as guest:
+        guest.public_ok()
+        require(durable_rows(guest.volume) == owner, "promotion changed the database or owner")
+    print("PASS local trial, hook flush, paid promotion and recovery", flush=True)
+
+
 def check(binary, scratch):
     replica, source = scratch / "replica", scratch / "source"
     with Guest(binary, scratch, source, replica, CREW_DROP_BOOTSTRAP="1") as guest:
@@ -291,4 +313,5 @@ if __name__ == "__main__":
     binary = args.binary.resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix="cd-", dir="/tmp") as root:
         check_manifest(binary, Path(root))
+        check_trial(binary, Path(root))
         check(binary, Path(root))

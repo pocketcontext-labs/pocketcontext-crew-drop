@@ -30,7 +30,7 @@ func (s *service) readiness(ctx context.Context, drain bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for ctx.Err() == nil {
-		if s.replicaState == "ready" && (!drain || s.active == 0) {
+		if (s.replicaState == "ready" || (s.localOnly && s.dataState == "ready")) && (!drain || s.active == 0) {
 			return nil
 		}
 		next := s.changed
@@ -68,10 +68,17 @@ type hookOutcome struct {
 
 func (s *service) lifecycleEvent(ctx context.Context, event string) (out hookOutcome) {
 	out.Event = event
+	confirmation := "confirmed"
+	if s.localOnly {
+		confirmation = "disabled"
+	}
 	fail := func(stage string, err error) hookOutcome {
 		out.Stage, out.Error = stage, err.Error()
 		if event != "resume" {
 			out.Replication = "unconfirmed"
+			if s.localOnly {
+				out.Replication = "disabled"
+			}
 		}
 		return out
 	}
@@ -106,7 +113,7 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) (out hookOut
 		if err := s.disk.wait(ctx); err != nil {
 			return fail("flush", err)
 		}
-		out.OK, out.Replication = true, "confirmed"
+		out.OK, out.Replication = true, confirmation
 		return out
 	}
 	quiesce := event == "suspend" || event == "terminate"
@@ -132,7 +139,7 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) (out hookOut
 		}
 	}
 	var result syncResult
-	if err == nil {
+	if err == nil && !s.localOnly {
 		stage = "sync"
 		result, err = s.replica.sync(ctx)
 		out.TXID = result.TXID
@@ -159,7 +166,7 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) (out hookOut
 	if err != nil {
 		return fail(stage, err)
 	}
-	out.OK, out.Replication = true, "confirmed"
+	out.OK, out.Replication = true, confirmation
 	return out
 }
 

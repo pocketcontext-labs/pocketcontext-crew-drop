@@ -5080,3 +5080,12 @@ html:has(.crew-dialog:modal) {
 @media (prefers-reduced-motion: no-preference) {
   .crew-workspace-loading::before { animation: crew-refresh-spin 900ms linear infinite; }
 }
+
+.drop-storage-warning {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: .5rem 1rem;
+  background: #fff0cc;
+  color: #452d00;
+}

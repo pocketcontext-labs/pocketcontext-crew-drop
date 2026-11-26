@@ -125,6 +125,11 @@ func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 		}
 		switch p.Mode {
 		case "new", "recovered":
+			if !s.localOnly && p.Mode == "new" {
+				if err := s.enrollTrial(ctx, record, false); err != nil {
+					return "", err
+				}
+			}
 			return p.Mode, nil
 		case "checking":
 		default:
@@ -136,6 +141,11 @@ func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 			return "", err
 		}
 		if exists {
+			if !s.localOnly {
+				if err := s.enrollTrial(ctx, record, true); err != nil {
+					return "", err
+				}
+			}
 			return "local", nil
 		}
 		var id [16]byte
@@ -157,11 +167,16 @@ func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 	if err := s.gate(ctx, "recovery"); err != nil {
 		return "", err
 	}
-	if err := s.cloud(ctx); err != nil {
-		return "", err
+	if s.localOnly && !s.bootstrap {
+		return "", errors.New("local-only bootstrap requires a new Drop placement")
 	}
-	fresh := false
-	if s.bootstrap {
+	fresh := s.localOnly
+	if !s.localOnly {
+		if err := s.cloud(ctx); err != nil {
+			return "", err
+		}
+	}
+	if s.bootstrap && !s.localOnly {
 		fresh, err = s.reserveNew(ctx, p.Nonce)
 		if err != nil {
 			return "", err
@@ -172,6 +187,20 @@ func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 		// require recovery or explicit operator reconciliation, never reinitialize it.
 		if _, err := os.Lstat(r.project); !errors.Is(err, os.ErrNotExist) {
 			return "", errors.New("cannot bootstrap over a preexisting project snapshot")
+		}
+		if s.localOnly {
+			path := filepath.Join(filepath.Dir(record), "trial-enrollment.json")
+			if previous, err := os.ReadFile(path); err == nil {
+				var prior pending
+				if json.Unmarshal(previous, &prior) != nil || prior != p {
+					return "", errors.New("local trial volume lost its database")
+				}
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return "", err
+			}
+			if err := storePending(path, p); err != nil {
+				return "", err
+			}
 		}
 		p.Mode = "new"
 	} else {
@@ -192,6 +221,40 @@ func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 		return "", err
 	}
 	return p.Mode, nil
+}
+
+func (s *service) enrollTrial(ctx context.Context, record string, verifyLocal bool) error {
+	path := filepath.Join(filepath.Dir(record), "trial-enrollment.json")
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var p pending
+	if json.Unmarshal(raw, &p) != nil || p.App != s.app || len(p.Nonce) != 32 {
+		return errors.New("invalid local trial enrollment")
+	}
+	if verifyLocal {
+		if err := verifyIdentity(s.replica.live, s.app); err != nil {
+			return err
+		}
+	}
+	if err := s.cloud(ctx); err != nil {
+		return err
+	}
+	ok, err := s.reserveNew(ctx, p.Nonce)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return errors.New("replica namespace belongs to another enrollment")
+	}
+	if err := os.Remove(path); err != nil {
+		return err
+	}
+	return syncFile(filepath.Dir(path))
 }
 
 func exited(err error) error {
@@ -310,6 +373,10 @@ func (s *service) runBackend(ctx context.Context, mode, record string) error {
 }
 
 func (s *service) replicate(ctx context.Context) {
+	if s.localOnly {
+		s.replication("disabled", nil)
+		return
+	}
 	r := s.replica
 	for ctx.Err() == nil {
 		s.replication("starting", nil)

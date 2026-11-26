@@ -248,3 +248,32 @@ func TestDropPlainWriteWhileFileIdentityIsPending(t *testing.T) {
 		t.Fatal("attachment never completed")
 	}
 }
+
+func TestTrialNoteAndAttachmentPromoteToPaidReplica(t *testing.T) {
+	a := newTestApp(t)
+	t.Setenv("CREW_DROP_APP_ID", "d-0123456789abcde")
+	for _, key := range []string{"CREW_DROP_BUCKET", "CREW_DROP_FILE_REPLICA", "AWS_ENDPOINT_URL_S3", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE"} {
+		t.Setenv(key, "")
+	}
+	if err := PrepareTrialAttachments(t.Context(), a.app); err != nil {
+		t.Fatal(err)
+	}
+	bucket := crewWrite(t, a, true, "bucket.create", "", 0, map[string]any{"name": "Trial"}, 200)
+	data := []byte("local trial original")
+	note := crewWrite(t, a, true, "note.create", "", 0, map[string]any{"bucket": bucket["id"], "title": "Trial note", "files": []any{map[string]any{"name": "local.txt", "content_base64": base64.StdEncoding.EncodeToString(data)}}}, 200)
+	att := note["attachments"].([]any)[0].(map[string]any)
+	root := t.TempDir()
+	t.Setenv("CREW_DROP_FILE_REPLICA", root)
+	for range 2 {
+		if err := PrepareTrialAttachments(t.Context(), a.app); err != nil {
+			t.Fatal(err)
+		}
+	}
+	uploaded, err := os.ReadFile(filepath.Join(root, os.Getenv("CREW_DROP_APP_ID"), "files", att["sha256"].(string)))
+	if err != nil || !bytes.Equal(uploaded, data) {
+		t.Fatalf("uploaded trial attachment = %q, err = %v", uploaded, err)
+	}
+	if _, err := a.app.FindRecordById("crew_notes", note["id"].(string)); err != nil {
+		t.Fatal(err)
+	}
+}

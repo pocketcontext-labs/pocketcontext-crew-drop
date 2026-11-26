@@ -56,6 +56,9 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 		if err := bindDropDatabase(e.App, appID, mode == "new"); err != nil {
 			return err
 		}
+		if err := crewruntime.PrepareTrialAttachments(ctx, e.App); err != nil {
+			return err
+		}
 		return onStart(e, p)
 	}
 	rt, err := appconfig.NewRuntime(hooks)

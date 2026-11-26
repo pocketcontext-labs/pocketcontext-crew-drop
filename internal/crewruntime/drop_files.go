@@ -3,11 +3,14 @@ package crewruntime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
+	"ganigeorgiev.com/pocketbase/dbx"
 	"ganigeorgiev.com/pocketbase/pocketbase/apis"
 	"ganigeorgiev.com/pocketbase/pocketbase/core"
 	"ganigeorgiev.com/pocketbase/pocketbase/tools/filesystem"
@@ -148,4 +151,75 @@ func (s *dropAttachmentStore) materialize(ctx context.Context, fsys *filesystem.
 		return err
 	}
 	return fsys.UploadFile(file, key)
+}
+
+// Keep each trial upload in the same SQLite transaction as its attachment.
+func PrepareTrialAttachments(ctx context.Context, app core.App) error {
+	if dropfiles.LocalOnly() {
+		return app.RunInTransaction(func(tx core.App) error {
+			if _, err := tx.DB().NewQuery("CREATE TABLE IF NOT EXISTS _crew_drop_pending_files (id TEXT PRIMARY KEY)").Execute(); err != nil {
+				return err
+			}
+			_, err := tx.DB().NewQuery("CREATE TRIGGER IF NOT EXISTS _crew_drop_trial_upload AFTER INSERT ON crew_attachments BEGIN INSERT INTO _crew_drop_pending_files(id) VALUES (NEW.id); END").Execute()
+			return err
+		})
+	}
+	var exists int
+	if err := app.DB().NewQuery("SELECT count(*) FROM sqlite_master WHERE name='_crew_drop_pending_files' AND type='table'").Row(&exists); err != nil || exists == 0 {
+		return err
+	}
+	if _, err := app.DB().NewQuery("DROP TRIGGER IF EXISTS _crew_drop_trial_upload").Execute(); err != nil {
+		return err
+	}
+	objects, err := dropfiles.FromEnvironment()
+	if err != nil {
+		return err
+	}
+	if objects == nil {
+		return errors.New("attachment replica is unavailable")
+	}
+	for {
+		var ids []string
+		if err := app.DB().NewQuery("SELECT id FROM _crew_drop_pending_files ORDER BY id LIMIT 32").Column(&ids); err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		for _, id := range ids {
+			record, err := app.FindRecordById("crew_attachments", id)
+			if err != nil {
+				return err
+			}
+			if err := promoteTrialAttachment(ctx, app, objects, record); err != nil {
+				return fmt.Errorf("replicate trial attachment %s: %w", id, err)
+			}
+			if _, err := app.DB().NewQuery("DELETE FROM _crew_drop_pending_files WHERE id={:id}").Bind(dbx.Params{"id": id}).Execute(); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func promoteTrialAttachment(ctx context.Context, app core.App, objects dropfiles.Objects, record *core.Record) error {
+	root, err := os.OpenRoot(filepath.Join(app.DataDir(), "storage"))
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	f, err := root.Open(filepath.Join(record.BaseFilesPath(), record.GetString("file")))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	size, hash := record.GetInt64("size"), record.GetString("sha256")
+	if err := dropfiles.Verify(io.Discard, f, hash, size); err != nil {
+		return err
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	upload, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	return objects.Put(upload, hash, size, f)
 }

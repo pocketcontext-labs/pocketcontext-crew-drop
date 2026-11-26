@@ -2,6 +2,7 @@
 // sign-in, reviews, dialogs headers, claims and relative dates (Crew 0.36.0).
 // Includes the English values of label tables that render through t().
 const de: Record<string, string> = {
+  "Not backed up: data lives only on this app’s disk.": "Kein Backup: Die Daten liegen nur auf dem Datenträger dieser App.",
   "Approval requested.": "Genehmigung angefordert.",
   "Task saved. Approval request failed.": "Aufgabe gespeichert. Genehmigungsanfrage fehlgeschlagen.",
   "Save and request approval": "Speichern und Genehmigung anfordern",

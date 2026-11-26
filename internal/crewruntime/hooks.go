@@ -16,6 +16,7 @@ import (
 	"github.com/pocketcontext-labs/pocketcontext-core/atomicfile"
 
 	"github.com/pocketcontext-labs/pocketcontext-crew/internal/buildinfo"
+	"github.com/pocketcontext-labs/pocketcontext-crew/internal/dropfiles"
 )
 
 type (
@@ -75,7 +76,11 @@ func Hooks() appserver.Hooks {
 func versionRoute(e *core.ServeEvent) error {
 	e.Router.GET("/api/bundle/version", func(re *core.RequestEvent) error {
 		re.Response.Header().Set("Cache-Control", "no-store")
-		return re.JSON(http.StatusOK, map[string]string{"version": buildinfo.Version, "commit": buildinfo.Commit})
+		result := map[string]any{"version": buildinfo.Version, "commit": buildinfo.Commit}
+		if dropfiles.LocalOnly() {
+			result["localOnly"] = true
+		}
+		return re.JSON(http.StatusOK, result)
 	}).Bind(apis.RequireAuth("users"))
 	return nil
 }

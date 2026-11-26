@@ -1,5 +1,9 @@
 # Crew upgrades and rollback
 
+## Crew for Drop 0.45.4-drop.4 to 0.45.4-drop.5
+
+Existing replicated installations retain their configuration. The new guest can also initialize a trial on a local volume. To promote a trial to replicated storage, redeploy on the same volume with the host S3 service enabled. The guest uploads trial attachments and starts Litestream on the existing database. Wait for replication to become ready before relying on cold recovery.
+
 ## Crew 0.45.3 to 0.45.4
 
 Follow the usual backup and binary replacement steps and reload the reader. This reader update requires no migration.

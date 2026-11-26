@@ -16,11 +16,14 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/pocketcontext-labs/pocketcontext-crew/internal/dropfiles"
 )
 
 var appID = regexp.MustCompile("^d-[a-z0-9]{15}$")
 
 type service struct {
+	localOnly                                               bool
 	disk                                                    *volumeBarrier // published before marking the backend ready
 	writer                                                  *os.Process    // protected by mu
 	frozen                                                  *os.Process    // only lifecycleEvent changes this reference
@@ -67,7 +70,8 @@ func fromEnvironment() (*service, error) {
 	if s.fileReplica != "" && !filepath.IsAbs(s.fileReplica) {
 		return nil, errors.New("CREW_DROP_FILE_REPLICA must be absolute")
 	}
-	if s.fileReplica == "" && (s.bucket == "" || s.region == "") {
+	s.localOnly = dropfiles.LocalOnly()
+	if !s.localOnly && s.fileReplica == "" && (s.bucket == "" || s.region == "") {
 		return nil, errors.New("CREW_DROP_BUCKET and AWS_REGION required")
 	}
 	token := os.Getenv("NIBRUN_HOOK_TOKEN")

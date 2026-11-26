@@ -2392,6 +2392,11 @@ export default function CrewWorkspace() {
       </aside>
       )}
       <main className="crew-main">
+        {serverVersion?.localOnly && (
+          <aside role="status" className="drop-storage-warning">
+            {t("Not backed up: data lives only on this app’s disk.")}
+          </aside>
+        )}
         {phone ? (
           <MobileTopBar
             title={t(pages.find((x) => x[0] === view)?.[1] ?? "")}

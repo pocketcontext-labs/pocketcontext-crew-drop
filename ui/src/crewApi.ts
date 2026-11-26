@@ -19,7 +19,7 @@ export function list(row: Row | undefined, key: string): string[] {
   }
   return [];
 }
-export type ServerVersion = { version: string; commit: string };
+export type ServerVersion = { version: string; commit: string; localOnly?: boolean };
 export type Connection = { kind: "mcp"; url: string } | { kind: "local" };
 export type ConnectionState =
   | Connection
@@ -114,6 +114,7 @@ export const crewApi = {
       throw new Error("Server version unavailable");
     return {
       version: result.version,
+      ...(result.localOnly === true ? { localOnly: true } : {}),
       commit: typeof result.commit === "string" ? result.commit : "",
     };
   },

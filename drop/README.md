@@ -70,6 +70,10 @@ The Drop supervisor holds the complete successful response to a potentially muta
 
 A verified file PUT precedes acknowledgment of its SQLite metadata. Protected downloads, archived records restored by the owner, signed previews and published snapshot images retain Crew's route-level authorization. The first authorized read on an empty volume verifies size and SHA-256 while restoring the original; subsequent reads can use the local file. Credential acquisition for an upload happens before the writer transaction. Its S3 PUT can still occupy the writer during the upload. A successful PUT whose transaction later rolls back can leave an unreferenced immutable object. WAL replication remains asynchronous; an acknowledged note or attachment reference newer than the replicated cut can be lost on abrupt host failure.
 
+## Local-only trials
+
+When Drop omits the replica bucket and the S3 endpoint, a new placement with explicit bootstrap can initialize on its local volume. Crew shows a storage warning, keeps attachments on disk, and flushes that disk during lifecycle hooks. A paid deployment opens the retained local database, claims the replica namespace using its original volume nonce, and uploads queued attachments before Litestream starts. A namespace conflict prevents promotion.
+
 ## Replication cost and loss window
 
 The supervisor writes this Litestream 0.5.18 configuration (keys checked against `cmd/litestream/main.go` at v0.5.18), with the socket, paths, URL and region filled in:

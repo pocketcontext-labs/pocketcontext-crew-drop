@@ -34,6 +34,12 @@ type s3Objects struct {
 	prefix      string
 }
 
+func LocalOnly() bool {
+	return appID.MatchString(os.Getenv("CREW_DROP_APP_ID")) && os.Getenv("CREW_DROP_BUCKET") == "" &&
+		os.Getenv("CREW_DROP_FILE_REPLICA") == "" && os.Getenv(EnvHostEndpoint) == "" &&
+		os.Getenv("AWS_ROLE_ARN") == "" && os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == ""
+}
+
 // FromEnvironment constructs clients without opening the token file or contacting AWS.
 // Ordinary Crew installations continue to use their configured PocketBase filesystem.
 func FromEnvironment() (Objects, error) {
@@ -44,7 +50,7 @@ func FromEnvironment() (Objects, error) {
 		}
 		return localObjects(filepath.Join(root, id, "files")), nil
 	}
-	if id == "" && bucket == "" {
+	if LocalOnly() || (id == "" && bucket == "") {
 		return nil, nil
 	}
 	if !appID.MatchString(id) || bucket == "" {
