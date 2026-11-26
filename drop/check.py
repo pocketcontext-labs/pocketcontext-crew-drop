@@ -28,6 +28,28 @@ def require(ok, message):
         raise AssertionError(message)
 
 
+def check_manifest(binary, directory):
+    args = [binary, "--drop-manifest"]
+    options = dict(cwd=directory, env={"HOME": str(directory), "TMPDIR": str(directory)},
+                   capture_output=True, timeout=10)
+    first = subprocess.run(args, check=True, **options)
+    second = subprocess.run(args, check=True, **options)
+    require(first.stdout == second.stdout and not first.stderr and not second.stderr,
+            "manifest output should be deterministic and clean")
+    manifest = json.loads(first.stdout)
+    require(isinstance(manifest.get("version"), str) and manifest.pop("version"), "missing build version")
+    require(manifest == {
+        "schema": "drop.manifest/v1", "app": "crew", "http_port": 8080, "hook_port": 8081,
+        "health": "tcp", "hooks": ["suspend", "resume", "terminate"],
+        "requires": ["persistent_volume", "s3_replica", "verified_owner_email", "sign_in_email"],
+        "minimum": {"memory_mib": 512, "cpu_quarters": 4, "disk_mib": 1024},
+    }, "unexpected Drop manifest")
+    invalid = subprocess.run([*args, "extra"], **options)
+    require(invalid.returncode != 0 and not invalid.stdout, "manifest accepted extra arguments")
+    require(not list(directory.iterdir()), "manifest wrote files during inspection")
+    print("PASS deterministic manifest without guest configuration or local state", flush=True)
+
+
 def loopback_ports():
     # Hold all three until chosen so the OS cannot return a duplicate.
     with contextlib.ExitStack() as ports:
@@ -268,4 +290,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     with tempfile.TemporaryDirectory(prefix="cd-", dir="/tmp") as root:
+        check_manifest(binary, Path(root))
         check(binary, Path(root))
