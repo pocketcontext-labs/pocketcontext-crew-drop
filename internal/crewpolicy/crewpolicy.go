@@ -174,6 +174,9 @@ func ArtifactPath(p string) bool { return artifactPathPattern.MatchString(p) }
 // public merely because it was registered on the application's router.
 func PublicRoute(method, p string) bool {
 	read := method == http.MethodGet || method == http.MethodHead
+	if (read || method == http.MethodPost) && p == "/api/workspace/copies" || method == http.MethodPost && p == "/api/workspace/copies/restore" {
+		return true
+	}
 	if read && (p == "/" || p == "/api/bundle/auth-mode" || p == "/api/bundle/version" || p == "/bundle/login" || p == "/bundle/login.js") {
 		return true
 	}

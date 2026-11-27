@@ -43,7 +43,7 @@ def check_manifest(binary, directory):
         "health": "tcp", "hooks": ["suspend", "resume", "terminate"],
         "requires": ["persistent_volume", "verified_owner_email", "sign_in_email"],
         "optional": ["s3_replica"],
-        "minimum": {"memory_mib": 512, "cpu_quarters": 4, "disk_mib": 1024},
+        "minimum": {"memory_mib": 256, "cpu_quarters": 1, "disk_mib": 1024},
     }, "unexpected Drop manifest")
     invalid = subprocess.run([*args, "extra"], **options)
     require(invalid.returncode != 0 and not invalid.stdout, "manifest accepted extra arguments")

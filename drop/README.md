@@ -19,7 +19,7 @@ python3 drop/idle.py
 
 Create a fresh app with `drop app create NAME --slug SLUG --kind crew` as its verified hosted owner. Upload `drop/build/pocketcontext-crew-drop-linux-amd64` as a Drop release and verify its SHA-256 against the build output. The build checks the archive and executable digests of the embedded Litestream child, verifies static linking and enforces the 90 MiB release limit. No arguments also starts the guest supervisor. Normal Crew CLI subcommands are available.
 
-To inspect a release, run `pocketcontext-crew-drop --drop-manifest`. It writes one `drop.manifest/v1` JSON document to stdout and exits before guest startup. It needs no configuration, credentials or volume. It reports the linked release version, TCP health and listener ports, lifecycle hooks, required platform services, and minimum supported resources. Crew’s initial supported floor is the managed sign-in acceptance profile of one vCPU (four quarters), 512 MiB of memory and a 1024 MiB persistent disk. A deployment may reserve more.
+To inspect a release, run `pocketcontext-crew-drop --drop-manifest`. It writes one `drop.manifest/v1` JSON document to stdout and exits before guest startup. It needs no configuration, credentials or volume. It reports the linked release version, TCP health and listener ports, lifecycle hooks, required platform services, and minimum supported resources. Crew requires at least one CPU quarter, 256 MiB of memory and a 1024 MiB persistent disk. Drop assigns 2 GiB to new 1× workspaces. A deployment may reserve more.
 
 The executable smoke test uses temporary volumes and a file replica on loopback. It checks protected route registration after restart, shared cold recovery, the original owner and database identity, and refusal to reinitialize an established app with missing replica data.
 
@@ -73,6 +73,12 @@ A verified file PUT precedes acknowledgment of its SQLite metadata. Protected do
 ## Local-only trials
 
 When Drop omits the replica bucket and the S3 endpoint, a new placement with explicit bootstrap can initialize on its local volume. Crew shows a storage warning, keeps attachments on disk, and flushes that disk during lifecycle hooks. A paid deployment opens the retained local database, claims the replica namespace using its original volume nonce, and uploads queued attachments before Litestream starts. A namespace conflict prevents promotion.
+
+## Owner-selected recovery copies
+
+In Crew Settings, open **Backup and restore**. A copy contains a consistent SQLite snapshot and all referenced immutable attachment originals, including archived files. On a funded deployment Crew writes content-addressed parts through its app-scoped proxy and waits for replication of the copy catalog. A retry of the same creation request reuses its copy ID. Local-only copies live on the workspace volume.
+
+Choose a copy and review it before confirming replacement. Crew verifies its digest, database identity, SQLite integrity and attachment inventory before requesting a restart. The supervisor stops its sole writer and replicator and retains the previous local database. Recovery keeps the workspace address and requires a fresh sign-in. An operator must still fence a lost host before granting a new writer. Complete operator backups remain necessary for private webhook keys and other operator material.
 
 ## Replication cost and loss window
 

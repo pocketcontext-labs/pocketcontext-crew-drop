@@ -27,6 +27,9 @@ var dropAppID = regexp.MustCompile(`^d-[a-z0-9]{15}$`)
 // ServeDropBackend is the loopback hosted server owned by the guest supervisor.
 // Core exclusively opens the private working database. SQLite and its WAL stay together.
 func ServeDropBackend(ctx context.Context, mode string) error {
+	return serveDropBackend(ctx, mode, func(code string) error { return sendDropSignInCode(ctx, code) })
+}
+func serveDropBackend(ctx context.Context, mode string, submitCode func(string) error) error {
 	if mode != "local" && mode != "new" && mode != "recovered" {
 		return errors.New("invalid Drop backend boot mode")
 	}
@@ -57,6 +60,9 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 			return err
 		}
 		if err := crewruntime.PrepareTrialAttachments(ctx, e.App); err != nil {
+			return err
+		}
+		if err := crewruntime.RegisterWorkspaceCopies(e, filepath.Join(root, "crew"), appID, mode == "recovered"); err != nil {
 			return err
 		}
 		return onStart(e, p)
@@ -110,7 +116,7 @@ func ServeDropBackend(ctx context.Context, mode string) error {
 		HTTPSDomain: os.Getenv("POCKETCONTEXT_DOMAIN"), HostedHTTPAddress: addr, HostedProxy: proxy,
 		HostedConfig: &appserver.HostedConfig{
 			OwnerEmail:     os.Getenv("DROP_OWNER_EMAIL"),
-			SendSignInCode: func(code string) error { return sendDropSignInCode(ctx, code) },
+			SendSignInCode: submitCode,
 		},
 		HostedInit: init, HostedRestore: mode == "recovered",
 	})

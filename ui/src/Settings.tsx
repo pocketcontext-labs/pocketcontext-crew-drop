@@ -1,8 +1,9 @@
+import WorkspaceCopies from "./WorkspaceCopies";
 import { agentTapSettingsHash } from "./itemLink";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { languages, t, useLanguage, setLanguage, type Language } from "./i18n";
 import { localIdentity, pb } from "./api";
-import { val, type Row } from "./crewApi";
+import { val, type Row, type ServerVersion } from "./crewApi";
 import {
   agentActions,
   allAgentsAction,
@@ -18,7 +19,7 @@ import { icons } from "./MobileChrome";
 import { saveSettings, showAllHelp, useReaderSettings } from "./sessionGuide";
 import "./settings.css";
 
-export type ServerVersion = { version: string; commit: string };
+export type { ServerVersion } from "./crewApi";
 
 type Picker =
   { kind: "language" } | { kind: "all" } | { kind: "agent"; agent: Row };
@@ -296,6 +297,7 @@ export default function Settings({
         </ul>
       </section>
 
+      {serverVersion?.workspaceCopies && <WorkspaceCopies />}
       <section aria-labelledby="crew-settings-about">
         <h2 id="crew-settings-about">{t("About")}</h2>
         <ul className="crew-settings-group">

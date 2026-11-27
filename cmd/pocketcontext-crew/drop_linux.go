@@ -32,7 +32,7 @@ func runDrop(args []string) (bool, int) {
 			"hooks":     []string{"suspend", "resume", "terminate"},
 			"requires":  []string{"persistent_volume", "verified_owner_email", "sign_in_email"},
 			"optional":  []string{"s3_replica"},
-			"minimum":   map[string]int{"memory_mib": 512, "cpu_quarters": 4, "disk_mib": 1024},
+			"minimum":   map[string]int{"memory_mib": 256, "cpu_quarters": 1, "disk_mib": 1024},
 		})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

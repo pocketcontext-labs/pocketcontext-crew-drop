@@ -3708,5 +3708,75 @@
   "method": "PUT",
   "path": "/manifest.json",
   "allow": false
+ },
+ {
+  "method": "DELETE",
+  "path": "/api/workspace/copies",
+  "allow": false
+ },
+ {
+  "method": "GET",
+  "path": "/api/workspace/copies",
+  "allow": true
+ },
+ {
+  "method": "HEAD",
+  "path": "/api/workspace/copies",
+  "allow": true
+ },
+ {
+  "method": "OPTIONS",
+  "path": "/api/workspace/copies",
+  "allow": false
+ },
+ {
+  "method": "PATCH",
+  "path": "/api/workspace/copies",
+  "allow": false
+ },
+ {
+  "method": "POST",
+  "path": "/api/workspace/copies",
+  "allow": true
+ },
+ {
+  "method": "PUT",
+  "path": "/api/workspace/copies",
+  "allow": false
+ },
+ {
+  "method": "DELETE",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
+ },
+ {
+  "method": "GET",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
+ },
+ {
+  "method": "HEAD",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
+ },
+ {
+  "method": "OPTIONS",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
+ },
+ {
+  "method": "PATCH",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
+ },
+ {
+  "method": "POST",
+  "path": "/api/workspace/copies/restore",
+  "allow": true
+ },
+ {
+  "method": "PUT",
+  "path": "/api/workspace/copies/restore",
+  "allow": false
  }
 ]

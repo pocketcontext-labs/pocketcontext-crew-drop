@@ -77,6 +77,9 @@ func versionRoute(e *core.ServeEvent) error {
 	e.Router.GET("/api/bundle/version", func(re *core.RequestEvent) error {
 		re.Response.Header().Set("Cache-Control", "no-store")
 		result := map[string]any{"version": buildinfo.Version, "commit": buildinfo.Commit}
+		if os.Getenv("CREW_DROP_APP_ID") != "" {
+			result["workspaceCopies"] = true
+		}
 		if dropfiles.LocalOnly() {
 			result["localOnly"] = true
 		}

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pocketcontext-labs/pocketcontext-crew/internal/dropfiles"
+	"github.com/pocketcontext-labs/pocketcontext-crew/internal/workspacecopy"
 )
 
 type pending struct {
@@ -116,6 +117,9 @@ func (s *service) cloud(ctx context.Context) error {
 
 func (s *service) bootMode(ctx context.Context, record string) (string, error) {
 	r := s.replica
+	if err := workspacecopy.Apply(filepath.Dir(record), r.project, r.live, func(path string) error { return verifyIdentity(path, s.app) }, func(id string) error { return storePending(record, pending{App: s.app, Nonce: id, Mode: "recovered"}) }); err != nil {
+		return "", err
+	}
 	b, err := os.ReadFile(record)
 	var p pending
 	switch {
@@ -312,8 +316,12 @@ func (s *service) runBackend(ctx context.Context, mode, record string) error {
 		}
 	}()
 	httpClient := http.Client{Timeout: 350 * time.Millisecond, Transport: &http.Transport{Proxy: nil, DisableKeepAlives: true}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	probeCtx, cancel := context.WithTimeout(ctx, 90*time.Second)
-	defer cancel()
+	probeCtx := ctx
+	if mode != "recovered" {
+		var cancel context.CancelFunc
+		probeCtx, cancel = context.WithTimeout(ctx, 90*time.Second)
+		defer cancel()
+	}
 	for {
 		select {
 		case err := <-done:
@@ -359,11 +367,23 @@ func (s *service) runBackend(ctx context.Context, mode, record string) error {
 	replCtx, stopReplication := context.WithCancel(ctx)
 	replicationDone := make(chan struct{})
 	go func() { s.replicate(replCtx); close(replicationDone) }()
-	select {
-	case err = <-done:
-		joined = true
-	case <-ctx.Done():
-		err = ctx.Err()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+backendLoop:
+	for {
+		select {
+		case <-ticker.C:
+			if _, statErr := os.Stat(filepath.Join(filepath.Dir(record), "owner-restore", "id")); statErr == nil {
+				break backendLoop
+			}
+
+		case err = <-done:
+			joined = true
+			break backendLoop
+		case <-ctx.Done():
+			err = ctx.Err()
+			break backendLoop
+		}
 	}
 	// Block new proxy requests before restarting the backend.
 	s.data("starting", nil)
