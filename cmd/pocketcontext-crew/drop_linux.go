@@ -31,7 +31,7 @@ func runDrop(args []string) (bool, int) {
 			"health":    "tcp",
 			"hooks":     []string{"suspend", "resume", "terminate"},
 			"requires":  []string{"persistent_volume", "verified_owner_email", "sign_in_email"},
-			"optional":  []string{"s3_replica"},
+			"optional":  []string{"s3_replica", "platform_backup_v1"},
 			"minimum":   map[string]int{"memory_mib": 256, "cpu_quarters": 1, "disk_mib": 1024},
 		})
 		if err != nil {

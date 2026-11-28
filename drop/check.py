@@ -42,7 +42,7 @@ def check_manifest(binary, directory):
         "schema": "drop.manifest/v1", "app": "crew", "http_port": 8080, "hook_port": 8081,
         "health": "tcp", "hooks": ["suspend", "resume", "terminate"],
         "requires": ["persistent_volume", "verified_owner_email", "sign_in_email"],
-        "optional": ["s3_replica"],
+        "optional": ["s3_replica", "platform_backup_v1"],
         "minimum": {"memory_mib": 256, "cpu_quarters": 1, "disk_mib": 1024},
     }, "unexpected Drop manifest")
     invalid = subprocess.run([*args, "extra"], **options)

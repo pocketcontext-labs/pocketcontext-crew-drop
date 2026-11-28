@@ -171,10 +171,18 @@ func (s *service) lifecycleEvent(ctx context.Context, event string) (out hookOut
 }
 
 func (s *service) hook(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet && r.URL.Path == "/control/backup-peer" {
+		s.backupPeer(w, r)
+		return
+	}
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	digest := sha256.Sum256([]byte(token))
 	if !ok || subtle.ConstantTimeCompare(s.token[:], digest[:]) != 1 {
 		respond(w, 401, map[string]string{"error": "unauthorized"})
+		return
+	}
+	if (r.Method == http.MethodGet && (r.URL.Path == "/control/backup" || r.URL.Path == "/control/restore-status")) || (r.Method == http.MethodPost && r.URL.Path == "/control/restore") {
+		s.backupHook(w, r)
 		return
 	}
 	if r.Method == "GET" && r.URL.Path == "/status" {

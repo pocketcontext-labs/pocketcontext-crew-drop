@@ -1,12 +1,17 @@
 """Owner-selected copy on a fenced replacement volume with a synthetic mailbox."""
+import hashlib
+import hmac
 import http.client
+import io
+import sqlite3
+import zipfile
 import json
 import secrets
 import sys
 import tempfile
 import time
 from pathlib import Path
-from check import Guest, OWNER, DOMAIN, require
+from check import Guest, APP, OWNER, DOMAIN, require
 
 
 def request(g, method, path, token="", data=None, content_type="application/json", want=200):
@@ -29,6 +34,17 @@ def login(g, mailbox):
     g.until(lambda: mailbox.exists() and len(mailbox.read_bytes()) == 6, "synthetic email code")
     session = json.loads(request(g, "POST", "/api/collections/users/auth-with-otp-code", data={"otpId": sent["otpId"], "code": mailbox.read_text()}))
     return session["token"]
+
+
+def platform(g, path, data=None, **headers):
+    headers.setdefault("Authorization", "Bearer " + g.token)
+    conn = http.client.HTTPConnection("127.0.0.1", g.hooks, timeout=45)
+    try:
+        conn.request("POST" if data is not None else "GET", "/control/" + path, data, headers)
+        response = conn.getresponse()
+        return response.status, response.read(), response.headers
+    finally:
+        conn.close()
 
 
 def run(binary, tmp):
@@ -75,6 +91,31 @@ def run(binary, tmp):
         g.public_ok()
         require(request(g,"GET","/api/crew/attachment?id="+attachment,token)==body,"local-only original missing")
         require(not json.loads(request(g,"POST",endpoint,token,{"id":secrets.token_hex(16)}))["remote"],"local-only copy marked remote")
+        challenge = secrets.token_hex(32)
+        status, _, headers = platform(g, "backup-peer", Authorization="", **{"X-Drop-Challenge": challenge})
+        proof = hmac.new(g.token.encode(), ("drop-backup-peer/v1:" + challenge).encode(), hashlib.sha256)
+        require(status == 200 and hmac.compare_digest(headers["X-Drop-Proof"], proof.hexdigest()), "guest proof mismatch")
+        require(platform(g, "backup", Authorization="")[0] == 401, "backup requires the hook credential")
+        status, archive, _ = platform(g, "backup")
+        require(status == 200, "platform backup failed")
+        with zipfile.ZipFile(io.BytesIO(archive)) as z:
+            content = tmp / "portable-content.db"
+            content.write_bytes(z.read("content.db"))
+            with sqlite3.connect(content) as db:
+                tables = {row[0] for row in db.execute("SELECT name FROM sqlite_schema")}
+                require({"users","_superusers","_otps","crew_upload_links","crew_webhook_configs"}.isdisjoint(tables), "portable archive contains credentials")
+    target_id = "d-000000000000002"
+    with Guest(binary, tmp, tmp/"clone", None, CREW_DROP_APP_ID=target_id, CREW_DROP_BOOTSTRAP="1", **env) as g:
+        g.public_ok()
+        job = {"X-Drop-Job": "copy-rehearsal", "X-Drop-Source-App": APP}
+        require(platform(g, "restore", archive, **(job | {"X-Drop-Source-App": target_id}))[0] == 422, "incorrect backup origin accepted")
+        require(platform(g, "restore", archive, **job)[0] == 202, "failed to stage platform restore")
+        g.until(lambda: platform(g, "restore-status", **job)[0] == 200, "platform restore applied")
+        require(platform(g, "restore", archive, **job)[0] == 200, "replayed restore was not idempotent")
+        request(g, "GET", "/api/crew/attachment?id="+attachment, token, want=401)
+        token = login(g, mailbox)
+        require(title() == "Before copy", "cloned record differs")
+        require(request(g, "GET", "/api/crew/attachment?id="+attachment, token) == body, "cloned original differs")
 
 
 if __name__=="__main__":
