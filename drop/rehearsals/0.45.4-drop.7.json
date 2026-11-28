@@ -1,0 +1,17 @@
+{
+  "product": "crew",
+  "version": "0.45.4-drop.7",
+  "candidate_sha256": "f3f23dc08d6ef63cc3c2d575e428e9847ae09d448e111d34efba17d62084da6d",
+  "tested_previous_binary_sha256": "33482c60306b5efa186f0b65b7e9883e5a68a2e6fe623e9691e01d38e891c197",
+  "previous_version": "0.45.4-drop.6",
+  "records": 1,
+  "attachments": 1,
+  "before_records_sha256": "6221890f5d9249a897734bd1043d18886e841158c7e473105796f73e0e1860b6",
+  "after_records_sha256": "6221890f5d9249a897734bd1043d18886e841158c7e473105796f73e0e1860b6",
+  "before_attachments_sha256": "79be011ee60d7c9d33d68fed7b71d719843e72b89160d5a5a09130c251221e44",
+  "after_attachments_sha256": "79be011ee60d7c9d33d68fed7b71d719843e72b89160d5a5a09130c251221e44",
+  "same_workspace_address": true,
+  "same_volume": true,
+  "same_owner_session": true,
+  "environment": "Disposable guest volumes; packaged baseline created fixture data over authenticated HTTP. Test-only email delivery issued the initial synthetic owner session. Packaged candidate reopened the same workspace and verified record and attachment bytes. File replica supplied storage."
+}
