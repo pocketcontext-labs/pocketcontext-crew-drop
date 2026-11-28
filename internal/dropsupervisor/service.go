@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -183,6 +184,10 @@ func wait(ctx context.Context, d time.Duration) error {
 }
 
 func (s *service) public(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/control/") || strings.HasPrefix(r.URL.Path, "/hooks/") {
+		http.NotFound(w, r)
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), s.wait)
 	defer cancel()
 	s.mu.Lock()

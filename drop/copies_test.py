@@ -91,6 +91,8 @@ def run(binary, tmp):
         g.public_ok()
         require(request(g,"GET","/api/crew/attachment?id="+attachment,token)==body,"local-only original missing")
         require(not json.loads(request(g,"POST",endpoint,token,{"id":secrets.token_hex(16)}))["remote"],"local-only copy marked remote")
+        request(g, "GET", "/control/backup", "Bearer "+g.token, want=404)
+        request(g, "POST", "/control/restore", "Bearer "+g.token, data=b"archive", want=404)
         challenge = secrets.token_hex(32)
         status, _, headers = platform(g, "backup-peer", Authorization="", **{"X-Drop-Challenge": challenge})
         proof = hmac.new(g.token.encode(), ("drop-backup-peer/v1:" + challenge).encode(), hashlib.sha256)
