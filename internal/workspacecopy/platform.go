@@ -17,7 +17,23 @@ import (
 )
 
 const portableFormat = "crew-content/v1"
-const MaxPlatformArchive = 16 << 30
+const MaxPlatformArchive = 90 << 20
+
+var ErrPlatformArchiveLimit = errors.New("platform backup exceeds 90 MiB")
+
+type limitedArchiveWriter struct {
+	dst       io.Writer
+	remaining int64
+}
+
+func (w *limitedArchiveWriter) Write(b []byte) (int, error) {
+	if int64(len(b)) > w.remaining {
+		return 0, ErrPlatformArchiveLimit
+	}
+	n, err := w.dst.Write(b)
+	w.remaining -= int64(n)
+	return n, err
+}
 
 // All names are constants, never taken from the archive. Runtime accounts,
 // integrations, executable migrations, upload grants and copy catalogs stay local.
@@ -102,7 +118,7 @@ func (p Platform) WithArchive(ctx context.Context, send func(*os.File) error) er
 		return err
 	}
 	defer out.Close()
-	z := zip.NewWriter(out)
+	z := zip.NewWriter(&limitedArchiveWriter{dst: out, remaining: MaxPlatformArchive})
 	if err = zipFile(z, "content.db", data, nil); err != nil {
 		return err
 	}
@@ -183,7 +199,7 @@ func (p Platform) StagePlatform(ctx context.Context, job, source string, body io
 		return err
 	}
 	if n > MaxPlatformArchive {
-		return errors.New("archive too large")
+		return ErrPlatformArchiveLimit
 	}
 	z, err := zip.OpenReader(input)
 	if err != nil {

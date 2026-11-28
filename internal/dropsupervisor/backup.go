@@ -100,7 +100,7 @@ func (s *service) backupHook(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			if st.Size() > workspacecopy.MaxPlatformArchive {
-				return errors.New("backup exceeds transfer limit")
+				return workspacecopy.ErrPlatformArchiveLimit
 			}
 			w.Header().Set("Content-Type", "application/zip")
 			w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
@@ -111,6 +111,10 @@ func (s *service) backupHook(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Printf("CrewDrop platform backup failed: %v", err)
 			if !started {
+				if errors.Is(err, workspacecopy.ErrPlatformArchiveLimit) {
+					http.Error(w, err.Error(), 413)
+					return
+				}
 				http.Error(w, "could not capture backup", 503)
 			}
 		}
@@ -129,6 +133,10 @@ func (s *service) backupHook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := p.StagePlatform(ctx, job, source, r.Body); err != nil {
+		if errors.Is(err, workspacecopy.ErrPlatformArchiveLimit) {
+			http.Error(w, err.Error(), 413)
+			return
+		}
 		log.Printf("CrewDrop platform restore failed: %v", err)
 		http.Error(w, "could not verify and stage backup", 422)
 		return
